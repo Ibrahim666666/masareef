@@ -233,6 +233,8 @@ nav.tabs button.on{color:var(--accent);font-weight:600}
 .dtop .t2{font-size:12px;color:var(--muted)}
 .dbtns{display:flex;gap:8px;margin-top:10px}
 .chips.wrap{flex-wrap:wrap;overflow:visible}
+.catgrid .newcat{border-style:dashed;color:var(--accent)}
+.catgrid .newcat span:first-child{font-size:22px}
 .chip.add{border-style:dashed;color:var(--accent)}
 .subadd{gap:8px;margin-top:8px}
 .subadd input,.subrow input{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px;font-size:16px}
@@ -610,7 +612,7 @@ function renderSettings(){const st=S.settings;
 
 /* ---------- sheets ---------- */
 let sheetClose=null;
-function openSheet(html,onMount,onClose){$('#sheetIn').innerHTML=html;$('#sheet').scrollTop=0;$('#backdrop').classList.add('on');$('#sheet').classList.add('on');sheetClose=onClose||null;if(onMount)onMount($('#sheetIn'))}
+function openSheet(html,onMount,onClose){$('#sheetIn').onclick=null;$('#sheetIn').innerHTML=html;$('#sheet').scrollTop=0;$('#backdrop').classList.add('on');$('#sheet').classList.add('on');sheetClose=onClose||null;if(onMount)onMount($('#sheetIn'))}
 function closeSheet(){$('#backdrop').classList.remove('on');$('#sheet').classList.remove('on');if(document.activeElement)document.activeElement.blur();const f=sheetClose;sheetClose=null;if(f)f()}
 function head(t){return `<div class="shead"><h3>${t}</h3><button class="x" type="button" data-act="close" aria-label="إغلاق">×</button></div>`}
 function ask(msg,ok,danger){return new Promise(res=>{let done=false;
@@ -697,7 +699,8 @@ function txSheet(t){
   <div class="seg" id="tt"><button type="button" data-t="exp">مصروف</button><button type="button" data-t="inc">دخل</button></div>
   <div class="amount-box"><input id="amt" type="text" inputmode="decimal" placeholder="0" value="${d.amount||''}" autocomplete="off" aria-label="المبلغ"><div class="prev" id="prev"></div>
    <div class="chips" style="justify-content:center;flex-wrap:wrap;margin-top:8px" id="qchips">${CUR().chips.map(v=>`<button type="button" class="chip" data-add="${v}">+${esc(short(v))}</button>`).join('')}</div></div>
-  <div class="field"><label>الفئة</label><div class="catgrid" id="cg"></div></div>
+  <div class="field"><label>الفئة</label><div class="catgrid" id="cg"></div>
+   <div class="subadd" id="catadd" style="display:none"><input id="cai" class="emo" value="🏷️" aria-label="رمز الفئة" style="flex:0 0 56px;text-align:center;font-size:20px"><input id="can" placeholder="اسم الفئة الجديدة" maxlength="30" aria-label="اسم الفئة الجديدة"><button class="mini" type="button" id="caok">إضافة</button></div></div>
   <div class="field" id="subw"><label id="subl">التفصيل</label><div class="chips wrap" id="sg"></div>
    <div class="subadd" id="subadd" style="display:none"><input id="subin" placeholder="مثلاً: مكملات" maxlength="30" aria-label="تفصيل جديد"><button class="mini" type="button" id="subok">إضافة</button></div></div>
   <div class="grid2"><div class="field"><label for="dt">التاريخ</label><input id="dt" type="date" value="${d.date}"></div>
@@ -714,15 +717,18 @@ function txSheet(t){
       q('#subadd').style.display='none'};
     const drawCats=()=>{el.querySelectorAll('#tt button').forEach(b=>b.className=b.dataset.t===d.type?'on '+d.type:'');
       const cs=st.cats.filter(c=>c.type===d.type);if(!cs.some(c=>c.id===d.cat)){const lc=lastCat(d.type);d.cat=cs.some(c=>c.id===lc)?lc:(cs[0]||{}).id;d.sub=''}
-      q('#cg').innerHTML=cs.map(c=>`<button type="button" data-c="${esc(c.id)}" class="${c.id===d.cat?'on':''}"><span>${esc(c.icon)}</span><span>${esc(c.name)}</span></button>`).join('');
+      q('#cg').innerHTML=cs.map(c=>`<button type="button" data-c="${esc(c.id)}" class="${c.id===d.cat?'on':''}"><span>${esc(c.icon)}</span><span>${esc(c.name)}</span></button>`).join('')+`<button type="button" class="newcat" data-cnew2="1"><span>＋</span><span>فئة جديدة</span></button>`;q('#catadd').style.display='none';
       const r=q('.check');if(r)r.style.display=d.type==='exp'?'flex':'none';drawSubs()};
     q('#tt').onclick=e=>{const b=e.target.closest('[data-t]');if(b){d.type=b.dataset.t;drawCats()}};
-    q('#cg').onclick=e=>{const b=e.target.closest('[data-c]');if(b){if(d.cat!==b.dataset.c)d.sub='';d.cat=b.dataset.c;el.querySelectorAll('#cg button').forEach(x=>x.classList.toggle('on',x===b));drawSubs()}};
+    q('#cg').onclick=e=>{if(e.target.closest('[data-cnew2]')){q('#catadd').style.display='flex';q('#can').focus();return}const b=e.target.closest('[data-c]');if(b){if(d.cat!==b.dataset.c)d.sub='';d.cat=b.dataset.c;el.querySelectorAll('#cg button').forEach(x=>x.classList.toggle('on',x===b));drawSubs()}};
     q('#sg').onclick=e=>{const n=e.target.closest('[data-s-new]');if(n){q('#subadd').style.display='flex';q('#subin').focus();return}
       const b=e.target.closest('[data-s]');if(b){d.sub=b.dataset.s;el.querySelectorAll('#sg [data-s]').forEach(x=>x.classList.toggle('on',x===b))}};
     const addSub=()=>{const v=q('#subin').value.trim();if(!v){toast('اكتب اسم التفصيل');return}const c=st.cats.find(x=>x.id===d.cat);if(!c)return;
       c.subs=c.subs||[];if(!c.subs.includes(v))c.subs.push(v);d.sub=v;q('#subin').value='';saveLocal();drawSubs();toast('انضاف «'+v+'» داخل '+c.name)};
-    q('#subok').onclick=addSub;q('#subin').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addSub()}};
+    q('#subok').onclick=addSub;
+    const addCat=()=>{const n=q('#can').value.trim();if(!n){toast('اكتب اسم الفئة');return}const c={id:'c'+uid(),name:n,icon:q('#cai').value.trim()||'🏷️',type:d.type,subs:[]};
+      st.cats.push(c);d.cat=c.id;d.sub='';q('#can').value='';saveLocal();drawCats();toast('انضافت فئة «'+n+'». تگدر تضيف تفاصيلها تحت')};
+    q('#caok').onclick=addCat;q('#can').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addCat()}};q('#subin').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addSub()}};
     q('#qchips').onclick=e=>{const b=e.target.closest('[data-add]');if(b){amt.value=String(parseAmount(amt.value)+Number(b.dataset.add));upd()}};
     amt.oninput=upd;upd();drawCats();if(!editing)setTimeout(()=>amt.focus(),320);
     q('#save').onclick=()=>{
@@ -744,7 +750,7 @@ function catBudgetsSheet(){const st=S.settings,cs=st.cats.filter(c=>c.type==='ex
 
 /* categories: list → editor with its details (sub-items) */
 function catsSheet(){const st=S.settings;
-  openSheet(`${head('الفئات والتفاصيل')}<p class="muted small" style="margin:0">اضغط على أي فئة حتى تعدّل اسمها ورمزها، أو تضيف وتعدّل وتحذف التفاصيل اللي بداخلها.</p>`+
+  openSheet(`${head('الفئات والتفاصيل')}<button class="btn" type="button" data-cnew="exp">＋ إضافة فئة جديدة</button><p class="muted small" style="margin:0">اضغط على أي فئة حتى تعدّل اسمها ورمزها، أو تضيف وتعدّل وتحذف التفاصيل اللي بداخلها.</p>`+
   ['exp','inc'].map(tp=>`<div class="card" style="padding:4px 16px"><div class="small muted" style="margin:10px 0 0;font-weight:600">${tp==='exp'?'فئات المصاريف':'فئات الدخل'}</div><div class="rows">`+
     st.cats.filter(c=>c.type===tp).map(c=>`<button class="row" type="button" data-ced="${esc(c.id)}"><span style="display:flex;gap:10px;align-items:center;min-width:0"><span class="ico s">${esc(c.icon)}</span><span style="min-width:0"><b style="font-weight:600">${esc(c.name)}</b>${(c.subs||[]).length?`<span class="small muted" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.subs.map(esc).join('، ')}</span>`:''}</span></span><span class="r-val">${(c.subs||[]).length?plain(c.subs.length):''}${chev}</span></button>`).join('')+
     `</div><button class="btn ghost" type="button" data-cnew="${tp}" style="margin:6px 0 12px">＋ فئة ${tp==='exp'?'مصاريف':'دخل'} جديدة</button></div>`).join(''),
