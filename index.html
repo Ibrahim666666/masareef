@@ -240,6 +240,10 @@ nav.tabs button.on{color:var(--accent);font-weight:600}
 .subadd input,.subrow input{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px;font-size:16px}
 .subrow{display:flex;gap:8px;align-items:center;padding:4px 0}
 .tap{cursor:pointer}
+.chip.quick{background:var(--accent-soft);border-color:transparent;color:var(--ink);font-weight:500}
+.chip.quick:active{transform:scale(.96)}
+.toast.act{pointer-events:auto;cursor:pointer}
+.toast u{font-weight:700}
 tr.tap td:first-child{color:var(--accent)}
 </style>
 </head>
@@ -282,6 +286,7 @@ tr.tap td:first-child{color:var(--accent)}
 "use strict";
 /* ---------- constants ---------- */
 const KEY='masareef.v1';
+const APP_VERSION='6';
 const MONTHS=['كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'];
 const MSHORT=['ك٢','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','ت١','ت٢','ك١'];
 const DAYS=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
@@ -303,7 +308,7 @@ const NEW_EXP=[
 const INC=[{id:'salary',name:'راتب',icon:'💼'},{id:'free',name:'دخل إضافي',icon:'💻'},{id:'oinc',name:'دخل آخر',icon:'➕'}];
 function defaultCats(){return [...NEW_EXP.map(c=>({...c,type:'exp'})),...INC.map(c=>({...c,type:'inc'}))]}
 function defaultSettings(){return {currency:'IQD',digits:'en',theme:'auto',budget:0,catBudgets:{},cats:defaultCats(),catsV:2,recurring:[],recSkip:{},
-  pays:['نقد','بطاقة','محفظة إلكترونية'],demo:false,salary:0,periods:[],debts:[],lastBackup:0,installDismissed:false}}
+  pays:['نقد','بطاقة','محفظة إلكترونية'],demo:false,salary:0,periods:[],debts:[],lastBackup:0,installDismissed:false,quick:[],quickHide:[]}}
 
 /* ---------- state ---------- */
 let S={settings:defaultSettings(),months:{},savedAt:0};
@@ -341,7 +346,59 @@ function allTx(){return Object.values(S.months).flat()}
 function hasAny(){return Object.values(S.months).some(a=>a.length)}
 function pushTx(t){const k=t.date.slice(0,7);(S.months[k]||(S.months[k]=[])).push(t)}
 function removeTx(t){const a=S.months[t.date.slice(0,7)]||[];const i=a.findIndex(x=>x.id===t.id);if(i>=0)a.splice(i,1)}
-let toastT;function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2400)}
+let toastT;function toast(msg){const t=$('#toast');t.onclick=null;t.classList.remove('act');t.textContent=msg;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2400)}
+
+function undoToast(msg,fn){const t=$('#toast');t.innerHTML=esc(msg)+' · <u>تراجع</u>';t.classList.add('on','act');clearTimeout(toastT);
+  t.onclick=()=>{t.onclick=null;t.classList.remove('on','act');fn()};toastT=setTimeout(()=>{t.classList.remove('on','act');t.onclick=null},5000)}
+
+/* ---------- quick add: pinned + frequently repeated expenses ---------- */
+const qKey=x=>x.cat+'|'+(x.sub||'')+'|'+x.amount;
+let quickNow=[];
+function quickItems(){const st=S.settings,pins=(st.quick||[]).filter(x=>st.cats.some(c=>c.id===x.cat)).map(x=>({...x,pin:true}));
+  const since=addDays(todayStr(),-90),cnt={},hide=st.quickHide||[];
+  for(const t of allTx()){if(t.type!=='exp'||t.debt||t.rec||t.period||t.date<since)continue;const k=qKey(t);(cnt[k]=cnt[k]||{cat:t.cat,sub:t.sub||'',amount:t.amount,note:'',n:0}).n++}
+  const auto=Object.values(cnt).filter(x=>x.n>=2&&!hide.includes(qKey(x))&&!pins.some(p=>qKey(p)===qKey(x))&&st.cats.some(c=>c.id===x.cat)).sort((a,b)=>b.n-a.n);
+  return [...pins,...auto].slice(0,8)}
+const qLabel=x=>{const c=cat(x.cat);return esc(c.icon)+' '+esc(x.sub||x.note||c.name)+' · '+esc(short(x.amount))};
+function quickAdd(i){const x=quickNow[i];if(!x)return;const t={id:uid(),type:'exp',amount:x.amount,cat:x.cat,note:x.note||'',pay:S.settings.pays[0],date:todayStr()};if(x.sub)t.sub=x.sub;
+  pushTx(t);cur=keyFor(t.date);commit();undoToast('انسجّل '+(x.sub||cat(x.cat).name)+' '+money(x.amount),()=>{removeTx(t);commit();toast('انلغى')})}
+function quickSheet(){const st=S.settings;
+  const draw=el=>{const items=quickItems();el.querySelector('#ql').innerHTML=items.length?items.map(x=>`<div class="tx"><span class="ico">${esc(cat(x.cat).icon)}</span><span class="main"><span class="t1">${esc(x.sub||x.note||cat(x.cat).name)}</span><span class="t2">${esc(cat(x.cat).name)} · ${money(x.amount)} · ${x.pin?'مثبّت':'مقترح لأنك تكرره'}</span></span><button class="mini del" type="button" data-qk="${esc(qKey(x))}" data-qp="${x.pin?1:0}">${x.pin?'إزالة':'إخفاء'}</button></div>`).join(''):'<p class="muted small" style="margin:8px 0">ماكو بعد.</p>'};
+  openSheet(`${head('الإضافة السريعة')}<p class="muted small" style="margin:0">المصاريف اللي تكررها بنفس المبلغ تطلع هنا وحدها. وتگدر تثبّت أي مصروف من شاشة الإضافة بخيار «ثبّته بالإضافة السريعة».</p><div class="card" style="padding:4px 16px"><div class="txs" id="ql"></div></div><button class="btn" type="button" data-act="close">تمام</button>`,
+  el=>{draw(el);el.querySelector('#ql').onclick=e=>{const b=e.target.closest('[data-qk]');if(!b)return;const k=b.dataset.qk;
+    if(b.dataset.qp==='1')st.quick=st.quick.filter(x=>qKey(x)!==k);else{st.quickHide=st.quickHide||[];st.quickHide.push(k)}draw(el);commit()}})}
+
+/* ---------- period summary ---------- */
+function summaryText(r){const s=sums(r);return `ملخص ${rTitle(r)}: صرفت ${money(s.exp)} من دخل ${money(s.inc)}. `+Object.entries(s.byCat).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([id,v])=>cat(id).name+' '+money(v)).join('، ')}
+function summarySheet(r,fresh){const s=sums(r);if(!s.count){toast('ماكو عمليات بهذي الفترة');return}
+  const P=stepR(r,-1),p=sums(P),list=txsOf(r).filter(t=>t.type!=='inc'),saved=s.inc-s.exp,ch=p.exp?(s.exp-p.exp)/p.exp:null,B=S.settings.budget;
+  const top=Object.entries(s.byCat).sort((a,b)=>b[1]-a[1]).slice(0,4);
+  const big=list.reduce((m,t)=>!m||t.amount>m.amount?t:m,null);
+  const byDay={};list.forEach(t=>byDay[t.date]=(byDay[t.date]||0)+t.amount);const bd=Object.entries(byDay).sort((a,b)=>b[1]-a[1])[0];
+  const debtPaid=list.filter(t=>t.debt).reduce((a,t)=>a+t.amount,0),debtLeftAll=S.settings.debts.filter(debtActive).reduce((a,d)=>a+debtLeft(d),0);
+  let rise=null,drop=null;for(const id of new Set([...Object.keys(s.byCat),...Object.keys(p.byCat)])){if(id==='debts')continue;const v=s.byCat[id]||0,pv=p.byCat[id]||0;if(!pv)continue;const d=v-pv;
+    if(d>0&&d>=pv*.2&&(!rise||d>rise.d))rise={id,d,pct:d/pv};if(d<0&&-d>=pv*.2&&(!drop||-d>drop.d))drop={id,d:-d,pct:-d/pv}}
+  const days=r.elapsed||1,colors=colorMap(top);
+  let verdict='';if(s.inc){verdict=saved>=0?`<span class="pill good">وفّرت ${money(saved)} (${plain(Math.round(saved/s.inc*100))}%)</span>`:`<span class="pill bad">صرفت أكثر من دخلك بـ ${money(-saved)}</span>`}
+  openSheet(`${head(fresh?'خلص شهرك! هذا ملخصه 📋':'ملخص الفترة 📋')}
+  <div class="small muted">${esc(rTitle(r))}${r.kind==='sal'?' · '+esc(rLabel(r)):''}</div>
+  <section class="card hero"><span class="eyebrow">صرفت</span><div class="big">${money(s.exp)}</div>
+   <div class="hero-row"><div><span>الدخل</span><b>${money(s.inc)}</b></div><div><span>${ch==null?'مقارنة':'عن الشهر اللي قبله'}</span><b>${ch==null?'—':(ch>0?'▲ ':'▼ ')+plain(Math.abs(Math.round(ch*100)))+'%'}</b></div></div></section>
+  ${verdict?`<div style="display:flex;justify-content:center">${verdict}</div>`:''}
+  ${B?`<div class="note ${s.exp>B?'bad':'good'}" style="margin:0">${s.exp>B?`تجاوزت الميزانية بـ ${money(s.exp-B)}`:`بقيت ضمن الميزانية، وفضل منها ${money(B-s.exp)}`}</div>`:''}
+  ${rise?`<div class="note warn" style="margin:0">⚠️ ${esc(cat(rise.id).name)} زادت ${plain(Math.round(rise.pct*100))}% (+${money(rise.d)}) عن الشهر اللي قبله. هنا تگدر توفّر.</div>`:''}
+  ${drop?`<div class="note good" style="margin:0">👏 ${esc(cat(drop.id).name)} قلّت ${plain(Math.round(drop.pct*100))}% (−${money(drop.d)}). عاشت إيدك.</div>`:''}
+  <div class="card"><div class="chead"><h2>أكثر الفئات</h2></div><div class="cbars">${top.map(([id,v])=>{const c=cat(id),pv=p.byCat[id]||0;return `<div><div class="cbar-top"><span class="ico s">${esc(c.icon)}</span><span class="nm">${esc(c.name)}</span><span class="muted small num">${pv?((v>=pv?'+':'−')+plain(Math.abs(Math.round((v-pv)/pv*100)))+'%'):''}</span><b>${money(v)}</b></div><div class="track"><i style="width:${(v/s.exp*100).toFixed(1)}%;background:${colors[id]}"></i></div></div>`}).join('')}</div></div>
+  <div class="card"><div class="stat-list">
+   <div><span class="muted">متوسط الصرف باليوم</span><b>${money(s.exp/days)}</b></div>
+   ${big?`<div><span class="muted">أكبر مصروف (${esc(big.sub||cat(big.cat).name)})</span><b>${money(big.amount)}</b></div>`:''}
+   ${bd?`<div><span class="muted">أغلى يوم (${esc(dayLabel(bd[0]))})</span><b>${money(bd[1])}</b></div>`:''}
+   <div><span class="muted">عدد العمليات</span><b>${plain(s.count)}</b></div>
+   ${debtPaid?`<div><span class="muted">دفعت أقساط وديون</span><b>${money(debtPaid)}</b></div>`:''}
+   ${debtLeftAll?`<div><span class="muted">باقي عليك ديون</span><b style="color:var(--bad)">${money(debtLeftAll)}</b></div>`:''}
+  </div></div>
+  <div class="btns"><button class="btn ghost" type="button" id="scopy">نسخ الملخص</button><button class="btn" type="button" data-act="close">تمام</button></div>`,
+  el=>{el.querySelector('#scopy').onclick=()=>navigator.clipboard.writeText(summaryText(r)).then(()=>toast('انسخ، الصقه وين ما تريد'),()=>toast('ما گدرت أنسخ'))})}
 
 /* ---------- periods (calendar month or salary-to-salary) ---------- */
 const salaryMode=()=>S.settings.periods.length>0;
@@ -457,7 +514,11 @@ function renderHome(){
   if(R.isNow){
     let sub='اضغط يوم ينزل راتبك حتى يبدي شهرك الجديد منه.';
     if(salaryMode()){const last=[...st.periods].sort().pop(),n=diffDays(last,todayStr());sub=n===0?'نزل الراتب اليوم. الشهر الجديد بدا.':`آخر راتب نزل قبل ${plain(n)} يوم (${esc(dShort(last))}).`}
-    h+=`<section class="card salcard"><div><h2>💰 نزل الراتب؟</h2><p class="muted small">${sub}</p></div><button class="btn" type="button" data-act="salary">نزل الراتب</button></section>`;
+    const pr=stepR(R,-1),hasPrev=pr&&sums(pr).count;
+    h+=`<section class="card salcard"><div><h2>💰 نزل الراتب؟</h2><p class="muted small">${sub}</p>${hasPrev?`<button class="link" type="button" data-act="summaryPrev" style="padding:4px 0">📋 ملخص الشهر اللي فات</button>`:''}</div><button class="btn" type="button" data-act="salary">نزل الراتب</button></section>`;
+    quickNow=quickItems();
+    if(quickNow.length)h+=`<section class="card"><div class="chead"><h2>⚡ إضافة سريعة</h2><button class="link" type="button" data-act="quickManage">تعديل</button></div><div class="chips wrap">${quickNow.map((x,i)=>`<button type="button" class="chip quick" data-act="quick" data-i="${i}">${qLabel(x)}</button>`).join('')}</div><p class="small muted" style="margin:8px 0 0">ضغطة وحدة تسجّل المصروف بتاريخ اليوم.</p></section>`;
+    else if(hasAny())h+=`<section class="card"><div class="chead"><h2>⚡ إضافة سريعة</h2></div><p class="small muted" style="margin:0">المصاريف اللي تكررها بنفس المبلغ راح تطلع هنا وحدها حتى تسجّلها بضغطة. وتگدر تثبّت أي مصروف من شاشة الإضافة.</p></section>`;
   }
   let pill='';
   if(B>0){const u=s.exp/B;pill=u>=1?'<span class="pill bad">تجاوزت الميزانية</span>':u>=.8?'<span class="pill warn">قريب من الحد</span>':'<span class="pill good">ضمن الميزانية</span>'}
@@ -533,7 +594,7 @@ function renderStats(){
   const biggest=exps.reduce((m,t)=>!m||t.amount>m.amount?t:m,null);
   const ch=p.exp?(s.exp-p.exp)/p.exp:null;
   const prevName=R.kind==='month'?'بـ '+MONTHS[+P.key.slice(5)-1]:'بالراتب السابق';
-  let h=`<div class="kpis">
+  let h=`<button class="btn ghost" type="button" data-act="summary">📋 ملخص ${esc(rTitle(R))}</button><div class="kpis">
     <div class="kpi"><span>متوسط الصرف اليومي</span><b>${days?money(s.exp/days):'—'}</b></div>
     <div class="kpi"><span>مقارنة ${esc(prevName)}</span><b class="${ch==null?'':ch>0?'up':'down'}">${ch==null?'—':(ch>0?'▲ ':'▼ ')+plain(Math.abs(Math.round(ch*100)))+'%'}</b><em class="muted">${ch==null?'ماكو بيانات':ch>0?'صرفت أكثر':'صرفت أقل'}</em></div>
     <div class="kpi"><span>أكبر مصروف</span><b>${biggest?money(biggest.amount):'—'}</b><em class="muted">${biggest?esc(cat(biggest.cat).name):''}</em></div>
@@ -607,7 +668,7 @@ function renderSettings(){const st=S.settings;
   <section class="card"><div class="rows">
     <button class="row" type="button" data-act="install"><span>تثبيته على شاشة الآيفون</span>${chev}</button>
     <button class="row" type="button" data-act="syncInfo"><span>وين تنحفظ بياناتي؟</span>${chev}</button>
-  </div></section>`;
+  </div></section><p class="small muted" style="text-align:center;margin:0">إصدار التطبيق ${plain(APP_VERSION)}</p>`;
 }
 
 /* ---------- sheets ---------- */
@@ -644,7 +705,8 @@ function salarySheet(){const st=S.settings,act=st.debts.filter(d=>d.monthly&&deb
       st.periods.push(date);
       pushTx({id:uid(),type:'inc',amount:v,cat:'salary',note:'راتب',pay:'بطاقة',date,period:date});
       act.forEach(d=>payDebt(d,date,date));
-      cur=date;closeSheet();commit();toast('نزل الراتب وبدا شهر جديد ✓')}})}
+      cur=date;closeSheet();commit();toast('نزل الراتب وبدا شهر جديد ✓');
+      const done=stepR(getR(date),-1);if(done&&sums(done).count)setTimeout(()=>summarySheet(done,true),450)}})}
 async function undoSalary(){const st=S.settings;if(!st.periods.length)return;const last=[...st.periods].sort().pop();
   const ok=await ask(`راح ينلغي «نزل الراتب» بتاريخ ${dShort(last)}، وتنحذف عملية الراتب والأقساط اللي انخصمت وياه. تكمل؟`,'إلغاء نزول الراتب',true);if(!ok)return;
   st.periods=st.periods.filter(p=>p!==last);
@@ -707,6 +769,7 @@ function txSheet(t){
    <div class="field"><label for="pay">طريقة الدفع</label><select id="pay">${st.pays.map(p=>`<option ${p===d.pay?'selected':''}>${esc(p)}</option>`).join('')}</select></div></div>
   <div class="field"><label for="nt">ملاحظة</label><input id="nt" type="text" placeholder="اختياري" value="${esc(d.note)}" maxlength="80"></div>
   ${editing?'':`<label class="check" for="rec"><input type="checkbox" id="rec"><span>مصروف ثابت يتكرر كل شهر بنفس اليوم</span></label>`}
+  <label class="check" for="pin"><input type="checkbox" id="pin"><span>ثبّته بالإضافة السريعة (يطلع زر بالرئيسية)</span></label>
   <button class="btn" type="button" id="save">${editing?'حفظ التعديل':'إضافة'}</button>
   ${editing?'<button class="btn danger" type="button" id="del">حذف العملية</button>':''}`,el=>{
     const q=s=>el.querySelector(s),amt=q('#amt'),prev=q('#prev');
@@ -718,7 +781,7 @@ function txSheet(t){
     const drawCats=()=>{el.querySelectorAll('#tt button').forEach(b=>b.className=b.dataset.t===d.type?'on '+d.type:'');
       const cs=st.cats.filter(c=>c.type===d.type);if(!cs.some(c=>c.id===d.cat)){const lc=lastCat(d.type);d.cat=cs.some(c=>c.id===lc)?lc:(cs[0]||{}).id;d.sub=''}
       q('#cg').innerHTML=cs.map(c=>`<button type="button" data-c="${esc(c.id)}" class="${c.id===d.cat?'on':''}"><span>${esc(c.icon)}</span><span>${esc(c.name)}</span></button>`).join('')+`<button type="button" class="newcat" data-cnew2="1"><span>＋</span><span>فئة جديدة</span></button>`;q('#catadd').style.display='none';
-      const r=q('.check');if(r)r.style.display=d.type==='exp'?'flex':'none';drawSubs()};
+      el.querySelectorAll('.check').forEach(r=>r.style.display=d.type==='exp'?'flex':'none');drawSubs()};
     q('#tt').onclick=e=>{const b=e.target.closest('[data-t]');if(b){d.type=b.dataset.t;drawCats()}};
     q('#cg').onclick=e=>{if(e.target.closest('[data-cnew2]')){q('#catadd').style.display='flex';q('#can').focus();return}const b=e.target.closest('[data-c]');if(b){if(d.cat!==b.dataset.c)d.sub='';d.cat=b.dataset.c;el.querySelectorAll('#cg button').forEach(x=>x.classList.toggle('on',x===b));drawSubs()}};
     q('#sg').onclick=e=>{const n=e.target.closest('[data-s-new]');if(n){q('#subadd').style.display='flex';q('#subin').focus();return}
@@ -738,6 +801,7 @@ function txSheet(t){
       if(d.sub)data.sub=d.sub;else delete data.sub;
       if(editing){removeTx(t);if(t.rec&&t.date.slice(0,7)!==date.slice(0,7))st.recSkip[t.rec+'|'+t.date.slice(0,7)]=1}
       else if(q('#rec')&&q('#rec').checked&&d.type==='exp'){const r={id:uid(),type:'exp',amount:v,cat:d.cat,sub:d.sub||'',note:data.note,pay:data.pay,day:+date.slice(8),start:date.slice(0,7)};st.recurring.push(r);data.rec=r.id}
+      if(q('#pin').checked&&d.type==='exp'){st.quick=st.quick||[];const qi={cat:d.cat,sub:d.sub||'',amount:v,note:d.sub?'':data.note};if(!st.quick.some(x=>qKey(x)===qKey(qi)))st.quick.push(qi)}
       pushTx(data);cur=keyFor(date);closeSheet();commit();toast(editing?'تم الحفظ':'انضافت ✓')};
     const del=q('#del');
     if(del)del.onclick=async()=>{const ok=await ask('تريد تحذف هذي العملية؟'+(t.rec?' (مصروف ثابت، تنحذف من هذا الشهر بس)':'')+(t.debt?' (قسط دين، يرجع القسط باقي عليك)':''),'احذف',true);if(!ok)return;
@@ -870,6 +934,10 @@ document.addEventListener('click',e=>{
     case 'prevM':case 'nextM':{const n=stepR(R,a.dataset.act==='prevM'?-1:1);if(n){cur=n.key;if(n.kind==='month'&&applyRecurring(n.key))commit();else render()}break}
     case 'thisM':cur=currentKey();render();break;
     case 'salary':salarySheet();break;
+    case 'quick':quickAdd(+a.dataset.i);break;
+    case 'quickManage':quickSheet();break;
+    case 'summary':summarySheet(R);break;
+    case 'summaryPrev':{const pr=stepR(R,-1);if(pr)summarySheet(pr);break}
     case 'salaryAmt':amountSheet('الراتب الشهري الثابت','يتسجّل تلقائياً من تضغط «نزل الراتب». وتگدر تغيّره بأي شهر من نفس الزر.',S.settings.salary,v=>{S.settings.salary=v});break;
     case 'undoSalary':undoSalary();break;
     case 'debts':debtsSheet();break;
@@ -902,7 +970,11 @@ $('#fileIn').addEventListener('change',e=>{const f=e.target.files[0];if(!f)retur
 loadLocal();applyTheme();cur=currentKey();
 if(applyAllRecurring())saveLocal();
 render();
-if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){
+  const hadSW=!!navigator.serviceWorker.controller;let reloaded=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(hadSW&&!reloaded&&!$('#sheet').classList.contains('on')){reloaded=true;location.reload()}});
+  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{r.update();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')r.update()})}).catch(()=>{});
+}
 initDevice();
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(applyAllRecurring())commit();else render()}});
 </script>
