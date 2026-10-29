@@ -240,6 +240,22 @@ nav.tabs button.on{color:var(--accent);font-weight:600}
 .subadd input,.subrow input{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px;font-size:16px}
 .subrow{display:flex;gap:8px;align-items:center;padding:4px 0}
 .tap{cursor:pointer}
+.hacts{display:flex;align-items:center;gap:8px}
+.hbtn{border:1px solid var(--line);background:var(--surface);width:36px;height:36px;border-radius:12px;display:grid;place-items:center;color:var(--muted)}
+.hbtn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.hbtn.on{color:var(--accent);border-color:var(--accent)}
+.wallet-hero{background:var(--ink);color:var(--bg)}
+.wallet-hero .big{margin-bottom:12px}
+.wbtns{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.wbtns button{border:0;border-radius:12px;padding:11px 6px;font-weight:600;background:color-mix(in srgb,var(--bg) 16%,transparent);color:inherit}
+.wbtns button:active{transform:scale(.97)}
+.envs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.env{display:flex;flex-direction:column;gap:6px;text-align:right;border:1px solid var(--line);background:var(--surface-2);border-radius:16px;padding:12px;min-width:0}
+.env-top{display:flex;align-items:center;gap:8px;min-width:0}
+.env-n{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.env b{font-family:var(--display);font-size:18px;font-weight:600}
+.env .track{display:block;margin:0;background:var(--line)}
+.wacts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .chip.quick{background:var(--accent-soft);border-color:transparent;color:var(--ink);font-weight:500}
 .chip.quick:active{transform:scale(.96)}
 .toast.act{pointer-events:auto;cursor:pointer}
@@ -251,7 +267,7 @@ tr.tap td:first-child{color:var(--accent)}
 <header>
   <div class="hrow">
     <div class="brand">مصاريفي</div>
-    <button class="sync" id="sync" data-act="syncInfo" type="button"><i></i><span>محفوظ على الجهاز</span></button>
+    <div class="hacts"><button class="sync" id="sync" data-act="syncInfo" type="button"><i></i><span>محفوظ على الجهاز</span></button><button class="hbtn" type="button" data-tab="settings" aria-label="الإعدادات"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></div>
   </div>
   <div class="monthbar" id="monthbar">
     <button type="button" data-act="prevM" aria-label="الشهر السابق"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
@@ -264,6 +280,7 @@ tr.tap td:first-child{color:var(--accent)}
   <section class="view on" id="v-home"></section>
   <section class="view" id="v-list"></section>
   <section class="view" id="v-stats"></section>
+  <section class="view" id="v-wallet"></section>
   <section class="view" id="v-settings"></section>
 </main>
 
@@ -273,7 +290,7 @@ tr.tap td:first-child{color:var(--accent)}
     <button type="button" data-tab="list"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>العمليات</button>
     <button type="button" class="fab" data-act="add" aria-label="إضافة عملية"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
     <button type="button" data-tab="stats"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>الإحصائيات</button>
-    <button type="button" data-tab="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>الإعدادات</button>
+    <button type="button" data-tab="wallet"><svg viewBox="0 0 24 24"><path d="M20 7H5a2 2 0 0 1 0-4h13v4"/><path d="M3 5v14a2 2 0 0 0 2 2h15V7"/><path d="M16 14h.01"/></svg>المحفظة</button>
   </div>
 </nav>
 
@@ -286,7 +303,7 @@ tr.tap td:first-child{color:var(--accent)}
 "use strict";
 /* ---------- constants ---------- */
 const KEY='masareef.v1';
-const APP_VERSION='6';
+const APP_VERSION='7';
 const MONTHS=['كانون الثاني','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','تشرين الأول','تشرين الثاني','كانون الأول'];
 const MSHORT=['ك٢','شباط','آذار','نيسان','أيار','حزيران','تموز','آب','أيلول','ت١','ت٢','ك١'];
 const DAYS=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
@@ -311,7 +328,8 @@ function defaultSettings(){return {currency:'IQD',digits:'en',theme:'auto',budge
   pays:['نقد','بطاقة','محفظة إلكترونية'],demo:false,salary:0,periods:[],debts:[],lastBackup:0,installDismissed:false,quick:[],quickHide:[]}}
 
 /* ---------- state ---------- */
-let S={settings:defaultSettings(),months:{},savedAt:0};
+function defaultWallet(){return {free:0,envs:[],log:[]}}
+let S={settings:defaultSettings(),months:{},wallet:defaultWallet(),savedAt:0};
 let cur='',R=null,tab='home',snaps=[];
 const F={q:'',type:'all',cat:'',sub:''};
 
@@ -428,7 +446,7 @@ function migrate(st){
   const keep=(st.cats||[]).filter(c=>c.type==='exp'&&!exp.some(n=>n.id===c.id)&&used.has(c.id));
   const inc=(st.cats||[]).filter(c=>c.type==='inc');
   st.cats=[...exp,...keep,...(inc.length?inc:INC.map(c=>({...c,type:'inc'})))];st.catsV=2}
-function fromRaw(v){const raw=v.settings||{};const st=Object.assign(defaultSettings(),raw);const prev=S;S={settings:st,months:v.months||{},savedAt:v.savedAt||0};
+function fromRaw(v){const raw=v.settings||{};const st=Object.assign(defaultSettings(),raw);const prev=S;S={settings:st,months:v.months||{},wallet:Object.assign(defaultWallet(),v.wallet||{}),savedAt:v.savedAt||0};
   if(raw.cats&&raw.catsV!==2)migrate(st);const out=S;S=prev;return out}
 function loadLocal(){try{const raw=localStorage.getItem(KEY);if(raw)S=fromRaw(JSON.parse(raw))}catch(e){}}
 const IDB={db:null,
@@ -482,11 +500,12 @@ function applyTheme(){const t=S.settings.theme;if(t==='auto')document.documentEl
 function render(){
   R=getR(cur);cur=R.key;
   $('#mname').textContent=rLabel(R)+(R.isNow?'':' ↺');
-  $('#monthbar').style.display=tab==='settings'?'none':'flex';
+  $('#monthbar').style.display=(tab==='settings'||tab==='wallet')?'none':'flex';
   $('[data-act="prevM"]').disabled=!stepR(R,-1);$('[data-act="nextM"]').disabled=!stepR(R,1);
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+tab));
   document.querySelectorAll('nav [data-tab]').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
-  ({home:renderHome,list:renderList,stats:renderStats,settings:renderSettings})[tab]();
+  $('.hbtn').classList.toggle('on',tab==='settings');
+  ({home:renderHome,list:renderList,stats:renderStats,wallet:renderWallet,settings:renderSettings})[tab]();
 }
 function txRow(t){const c=cat(t.cat),inc=t.type==='inc';
   const sub=[t.note,t.pay,tab==='home'?dayLabel(t.date):''].filter(Boolean).map(esc).join(' · ');
@@ -670,6 +689,65 @@ function renderSettings(){const st=S.settings;
     <button class="row" type="button" data-act="syncInfo"><span>وين تنحفظ بياناتي؟</span>${chev}</button>
   </div></section><p class="small muted" style="text-align:center;margin:0">إصدار التطبيق ${plain(APP_VERSION)}</p>`;
 }
+
+/* ---------- wallet: separate from the rest of the app ---------- */
+const W=()=>S.wallet;
+const ENV_IDEAS=[['💰','ادخار'],['🚑','طوارئ'],['✈️','سفرة'],['🤝','جمعية'],['🎓','دراسة سلطان'],['🚗','سيارة']];
+function wlog(txt,amt,env){const w=W();w.log.unshift({id:uid(),at:Date.now(),txt,amt,env:env||''});w.log=w.log.slice(0,300)}
+function envOf(id){return W().envs.find(e=>e.id===id)}
+function renderWallet(){const w=W(),inEnv=w.envs.reduce((a,e)=>a+e.bal,0);
+  let h=`<section class="card hero wallet-hero"><div class="hero-top"><span class="eyebrow">المبلغ الكلي</span><span class="pill neutral" style="background:color-mix(in srgb,var(--accent-ink) 14%,transparent);color:inherit">مستقلة عن المصاريف</span></div>
+   <div class="big">${money(w.free)}</div>
+   <div class="wbtns"><button type="button" data-act="w" data-k="add">＋ إضافة</button><button type="button" data-act="w" data-k="sub">− سحب</button><button type="button" data-act="w" data-k="set">✎ تعديل</button></div></section>
+  <div class="kpis"><div class="kpi"><span>بالظروف</span><b>${money(inEnv)}</b></div><div class="kpi"><span>الكلي + الظروف</span><b>${money(w.free+inEnv)}</b></div></div>
+  <section class="card"><div class="chead"><h2>الظروف</h2><button class="link" type="button" data-act="envNew">＋ ظرف جديد</button></div>`;
+  if(w.envs.length){h+=`<div class="envs">${w.envs.map(e=>{const pct=e.goal?Math.min(e.bal/e.goal,1):0;return `<button type="button" class="env" data-act="env" data-id="${e.id}">
+      <span class="env-top"><span class="ico">${esc(e.icon)}</span><span class="env-n">${esc(e.name)}</span></span><b class="num">${money(e.bal)}</b>
+      ${e.goal?`<span class="track"><i style="width:${(pct*100).toFixed(1)}%;background:${pct>=1?'var(--good)':'var(--accent)'}"></i></span><span class="small muted">${pct>=1?'وصلت الهدف ✓':'الهدف '+esc(short(e.goal))+' · '+plain(Math.round(pct*100))+'%'}</span>`:'<span class="small muted">اضغط حتى تحط أو تسحب</span>'}</button>`}).join('')}</div>`}
+  else h+=`<p class="muted small" style="margin:0 0 10px">الظرف مثل الظرف الحقيقي: تحط بيه فلوس من المبلغ الكلي حتى تعزلها لغرض معيّن. جرّب واحد من هذني:</p><div class="chips wrap">${ENV_IDEAS.map(([i,n])=>`<button type="button" class="chip" data-act="envIdea" data-i="${esc(i)}" data-n="${esc(n)}">${i} ${esc(n)}</button>`).join('')}</div>`;
+  h+=`</section>`;
+  if(w.log.length)h+=`<section class="card"><div class="chead"><h2>آخر الحركات</h2></div><div class="txs">${w.log.slice(0,15).map(logRow).join('')}</div></section>`;
+  $('#v-wallet').innerHTML=h}
+function logRow(l){const e=l.env?envOf(l.env):null;return `<div class="tx"><span class="ico s">${l.amt>=0?'⬆️':'⬇️'}</span><span class="main"><span class="t1">${esc(l.txt)}</span><span class="t2">${esc(dayLabel(ds(new Date(l.at))))}${e?' · '+esc(e.name):''}</span></span><span class="amt num ${l.amt>=0?'inc':''}">${l.amt>=0?'+':'−'}${money(Math.abs(l.amt))}</span></div>`}
+const W_TXT={add:['إضافة للمبلغ الكلي','أضف'],sub:['سحب من المبلغ الكلي','اسحب'],set:['تعديل المبلغ الكلي','احفظ'],in:['حط بالظرف (ينخصم من الكلي)','حط بالظرف'],out:['رجّع من الظرف للمبلغ الكلي','رجّع'],spend:['صرفت من الظرف','سجّل']};
+function walletAmount(kind,envId){const w=W(),e=envId?envOf(envId):null,[title,btn]=W_TXT[kind];
+  const avail=kind==='in'?w.free:(kind==='out'||kind==='spend')?e.bal:kind==='sub'?w.free:null;
+  openSheet(`${head(esc(title))}${e?`<div class="small muted">${esc(e.icon)} ${esc(e.name)} · فيه ${money(e.bal)}</div>`:''}
+  <div class="amount-box"><input id="wa" type="text" inputmode="decimal" placeholder="0" value="${kind==='set'?(w.free||''):''}" aria-label="المبلغ"><div class="prev" id="wp"></div>
+   <div class="chips" style="justify-content:center;flex-wrap:wrap;margin-top:8px" id="wq">${CUR().chips.map(v=>`<button type="button" class="chip" data-add="${v}">+${esc(short(v))}</button>`).join('')}${avail>0?`<button type="button" class="chip" data-all="${avail}">الكل</button>`:''}</div></div>
+  <div class="field"><label for="wn">ملاحظة (اختياري)</label><input id="wn" maxlength="60" placeholder="${kind==='add'?'مثلاً: من الراتب':kind==='spend'?'مثلاً: تذاكر':''}"></div>
+  <button class="btn" type="button" id="wgo">${btn}</button>`,el=>{const a=el.querySelector('#wa'),p=el.querySelector('#wp');
+    const u=()=>{const v=parseAmount(a.value);p.textContent=v?money(v)+(avail!=null?' · المتوفر '+money(avail):''):(avail!=null?'المتوفر '+money(avail):'اكتب المبلغ')};a.oninput=u;u();setTimeout(()=>a.focus(),320);
+    el.querySelector('#wq').onclick=ev=>{const b=ev.target.closest('[data-add]'),all=ev.target.closest('[data-all]');if(b){a.value=String(parseAmount(a.value)+Number(b.dataset.add));u()}if(all){a.value=all.dataset.all;u()}};
+    el.querySelector('#wgo').onclick=()=>{const v=parseAmount(a.value),note=el.querySelector('#wn').value.trim();
+      if(!v&&kind!=='set'){toast('اكتب المبلغ');return}
+      if(avail!=null&&kind!=='set'&&v>avail+1e-9){toast(kind==='in'?'المبلغ الكلي ما يكفي ('+money(avail)+')':'المبلغ أكثر من الموجود ('+money(avail)+')');return}
+      const t=x=>note?x+' · '+note:x;
+      if(kind==='add'){w.free+=v;wlog(t('إضافة'),v)}
+      else if(kind==='sub'){w.free-=v;wlog(t('سحب'),-v)}
+      else if(kind==='set'){const d=v-w.free;w.free=v;if(d)wlog(t('تعديل المبلغ الكلي'),d)}
+      else if(kind==='in'){w.free-=v;e.bal+=v;wlog(t('حطيت بظرف '+e.name),v,e.id)}
+      else if(kind==='out'){e.bal-=v;w.free+=v;wlog(t('رجّعت من ظرف '+e.name),-v,e.id)}
+      else if(kind==='spend'){e.bal-=v;wlog(t('صرفت من ظرف '+e.name),-v,e.id)}
+      closeSheet();commit();toast('تم ✓')}})}
+function envEdit(id,preset){const w=W(),e=id?envOf(id):null;
+  openSheet(`${head(e?'تعديل الظرف':'ظرف جديد')}
+   <div class="editrow" style="border:0;padding:0;grid-template-columns:60px 1fr"><input class="emo" id="ei" value="${esc(e?e.icon:(preset&&preset[0])||'✉️')}" aria-label="رمز الظرف"><input id="en" value="${esc(e?e.name:(preset&&preset[1])||'')}" placeholder="اسم الظرف، مثلاً: ادخار" maxlength="30" aria-label="اسم الظرف"></div>
+   <div class="field"><label for="eg">الهدف (اختياري): المبلغ اللي تريد توصله</label><input id="eg" inputmode="decimal" value="${e&&e.goal?e.goal:''}" placeholder="مثلاً 5000000"></div>
+   <button class="btn" type="button" id="es">حفظ</button>${e?`<button class="btn ghost" type="button" data-act="env" data-id="${e.id}">رجوع</button>`:''}`,el=>{if(!e)setTimeout(()=>el.querySelector('#en').focus(),320);
+   el.querySelector('#es').onclick=()=>{const n=el.querySelector('#en').value.trim();if(!n){toast('اكتب اسم الظرف');return}
+     const g=parseAmount(el.querySelector('#eg').value),ic=el.querySelector('#ei').value.trim()||'✉️';
+     if(e){e.name=n;e.icon=ic;e.goal=g}else w.envs.push({id:uid(),name:n,icon:ic,bal:0,goal:g});closeSheet();commit();toast('انحفظ الظرف')}})}
+function envSheet(id){const w=W(),e=envOf(id);if(!e)return;const logs=w.log.filter(l=>l.env===id).slice(0,20);
+  openSheet(`${head(esc(e.icon)+' '+esc(e.name))}
+   <div class="amount-box"><div class="small muted">رصيد الظرف</div><div class="num" style="font-size:34px;font-weight:700">${money(e.bal)}</div>${e.goal?`<div class="small muted">الهدف ${money(e.goal)} · باقي ${money(Math.max(e.goal-e.bal,0))}</div>`:''}</div>
+   <div class="wacts"><button class="btn" type="button" data-act="w" data-k="in" data-env="${e.id}">＋ حط بيه</button><button class="btn ghost" type="button" data-act="w" data-k="out" data-env="${e.id}">↩ رجّع للكلي</button></div>
+   <button class="btn ghost" type="button" data-act="w" data-k="spend" data-env="${e.id}">صرفت منه</button>
+   <p class="small muted" style="margin:0">«حط بيه» ينخصم من المبلغ الكلي. «رجّع» يرجّع للمبلغ الكلي. «صرفت منه» ينقص من الظرف بس.</p>
+   ${logs.length?`<div class="card" style="padding:4px 16px"><div class="txs">${logs.map(logRow).join('')}</div></div>`:''}
+   <div class="btns"><button class="btn ghost" type="button" data-act="envEdit" data-id="${e.id}">تعديل</button><button class="btn danger" type="button" id="edel">حذف الظرف</button></div>`,el=>{
+   const d=el.querySelector('#edel');d.onclick=()=>{if(!d.dataset.sure){d.dataset.sure='1';d.textContent=e.bal?'متأكد؟ رصيده يرجع للكلي':'متأكد؟ اضغط مرة ثانية';return}
+     if(e.bal){w.free+=e.bal;wlog('حذف ظرف '+e.name+' ورجع رصيده',e.bal)}w.envs=w.envs.filter(x=>x.id!==e.id);closeSheet();commit();toast('انحذف الظرف')}})}
 
 /* ---------- sheets ---------- */
 let sheetClose=null;
@@ -903,7 +981,7 @@ async function restoreFrom(text){let v;try{v=JSON.parse(text);v=v.data||v;if(!v.
   const ok=await ask('الاسترجاع راح يبدّل كل بياناتك الحالية ببيانات النسخة. تكمل؟','استرجع',true);if(!ok)return;
   const keepBackup=S.settings.lastBackup;S=fromRaw(v);S.settings.lastBackup=Math.max(S.settings.lastBackup||0,keepBackup||0);applyTheme();cur=currentKey();commit();toast('تم الاسترجاع ✓')}
 async function wipe(){const ok=await ask('راح تنمسح كل العمليات والإعدادات نهائياً. سوّيت نسخة احتياطية؟','امسح الكل',true);if(!ok)return;
-  S={settings:defaultSettings(),months:{},savedAt:0};applyTheme();cur=currentKey();commit();toast('انمسحت البيانات')}
+  S={settings:defaultSettings(),months:{},wallet:defaultWallet(),savedAt:0};applyTheme();cur=currentKey();commit();toast('انمسحت البيانات')}
 
 /* ---------- demo ---------- */
 function demo(){let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
@@ -934,6 +1012,11 @@ document.addEventListener('click',e=>{
     case 'prevM':case 'nextM':{const n=stepR(R,a.dataset.act==='prevM'?-1:1);if(n){cur=n.key;if(n.kind==='month'&&applyRecurring(n.key))commit();else render()}break}
     case 'thisM':cur=currentKey();render();break;
     case 'salary':salarySheet();break;
+    case 'w':walletAmount(a.dataset.k,a.dataset.env);break;
+    case 'env':envSheet(a.dataset.id);break;
+    case 'envNew':envEdit(null);break;
+    case 'envEdit':envEdit(a.dataset.id);break;
+    case 'envIdea':envEdit(null,[a.dataset.i,a.dataset.n]);break;
     case 'quick':quickAdd(+a.dataset.i);break;
     case 'quickManage':quickSheet();break;
     case 'summary':summarySheet(R);break;
