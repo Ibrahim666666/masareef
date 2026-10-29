@@ -232,6 +232,13 @@ nav.tabs button.on{color:var(--accent);font-weight:600}
 .dtop .nm{flex:1;min-width:0;display:flex;flex-direction:column}
 .dtop .t2{font-size:12px;color:var(--muted)}
 .dbtns{display:flex;gap:8px;margin-top:10px}
+.chips.wrap{flex-wrap:wrap;overflow:visible}
+.chip.add{border-style:dashed;color:var(--accent)}
+.subadd{gap:8px;margin-top:8px}
+.subadd input,.subrow input{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px;font-size:16px}
+.subrow{display:flex;gap:8px;align-items:center;padding:4px 0}
+.tap{cursor:pointer}
+tr.tap td:first-child{color:var(--accent)}
 </style>
 </head>
 <body>
@@ -299,7 +306,7 @@ function defaultSettings(){return {currency:'IQD',digits:'en',theme:'auto',budge
 /* ---------- state ---------- */
 let S={settings:defaultSettings(),months:{},savedAt:0};
 let cur='',R=null,tab='home',snaps=[];
-const F={q:'',type:'all',cat:''};
+const F={q:'',type:'all',cat:'',sub:''};
 
 /* ---------- helpers ---------- */
 const $=s=>document.querySelector(s);
@@ -388,7 +395,7 @@ function applyRecurring(k){
     if(r.start>k||S.settings.recSkip[r.id+'|'+k]||txs(k).some(t=>t.rec===r.id))continue;
     const day=Math.min(r.day,daysIn(k));
     if(k===thisMonth()&&day>new Date().getDate())continue;
-    pushTx({id:uid(),type:r.type||'exp',amount:r.amount,cat:r.cat,note:r.note||'',pay:r.pay||S.settings.pays[0],date:k+'-'+pad(day),rec:r.id});changed=true;
+    pushTx({id:uid(),type:r.type||'exp',amount:r.amount,cat:r.cat,sub:r.sub||undefined,note:r.note||'',pay:r.pay||S.settings.pays[0],date:k+'-'+pad(day),rec:r.id});changed=true;
   }
   return changed}
 function applyAllRecurring(){let changed=false;const now=thisMonth();
@@ -426,7 +433,7 @@ function txRow(t){const c=cat(t.cat),inc=t.type==='inc';
   const sub=[t.note,t.pay,tab==='home'?dayLabel(t.date):''].filter(Boolean).map(esc).join(' · ');
   return `<button class="tx" type="button" data-act="edit" data-id="${t.id}" data-m="${t.date.slice(0,7)}">
     <span class="ico">${esc(c.icon)}</span>
-    <span class="main"><span class="t1">${esc(c.name)}${t.rec?'<span class="badge">ثابت</span>':''}${t.debt?'<span class="badge">دين</span>':''}</span><span class="t2">${sub||'&nbsp;'}</span></span>
+    <span class="main"><span class="t1">${esc(c.name)}${t.sub?' · '+esc(t.sub):''}${t.rec?'<span class="badge">ثابت</span>':''}${t.debt?'<span class="badge">دين</span>':''}</span><span class="t2">${sub||'&nbsp;'}</span></span>
     <span class="amt num ${inc?'inc':''}">${inc?'+':'−'}${money(t.amount)}</span></button>`}
 function ring(pct,color){const C=2*Math.PI*50,p=Math.min(pct,1);
   return `<svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="50" fill="none" stroke="var(--surface-2)" stroke-width="12"/>
@@ -490,7 +497,7 @@ function renderHome(){
   if(top.length){const colors=colorMap(top);
     h+=`<section class="card"><div class="chead"><h2>وين راحت فلوسك</h2><button class="link" type="button" data-tab="stats">التفاصيل</button></div><div class="cbars">`+
     top.slice(0,6).map(([id,v])=>{const c=cat(id),b=st.catBudgets[id],pct=s.exp?v/s.exp:0,w=b?Math.min(v/b,1):pct,fill=b&&v>=b?'var(--bad)':colors[id];
-      return `<div><div class="cbar-top"><span class="ico s">${esc(c.icon)}</span><span class="nm">${esc(c.name)}</span><span class="muted small num">${plain(Math.round(pct*100))}%</span><b>${money(v)}</b></div>
+      return `<div class="tap" data-act="catDetail" data-cid="${esc(id)}"><div class="cbar-top"><span class="ico s">${esc(c.icon)}</span><span class="nm">${esc(c.name)}</span><span class="muted small num">${plain(Math.round(pct*100))}%</span><b>${money(v)}</b></div>
       <div class="track"><i style="width:${(w*100).toFixed(1)}%;background:${fill}"></i></div>${b?`<div class="small muted" style="margin-top:3px">من ميزانية ${money(b)}</div>`:''}</div>`}).join('')+`</div></section>`}
   const recent=[...txsOf(R)].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,6);
   if(recent.length)h+=`<section class="card"><div class="chead"><h2>آخر العمليات</h2><button class="link" type="button" data-tab="list">عرض الكل</button></div><div class="txs">${recent.map(txRow).join('')}</div></section>`;
@@ -499,12 +506,13 @@ function renderHome(){
 
 function renderList(){
   const all=txsOf(R),usedCats=[...new Set(all.map(t=>t.cat))],q=F.q.trim().toLowerCase();
-  const list=all.filter(t=>(F.type==='all'||t.type===F.type)&&(!F.cat||t.cat===F.cat)&&(!q||(cat(t.cat).name+' '+(t.note||'')+' '+(t.pay||'')+' '+t.amount).toLowerCase().includes(q)))
+  const list=all.filter(t=>(F.type==='all'||t.type===F.type)&&(!F.cat||t.cat===F.cat)&&(!F.sub||t.sub===F.sub)&&(!q||(cat(t.cat).name+' '+(t.sub||'')+' '+(t.note||'')+' '+(t.pay||'')+' '+t.amount).toLowerCase().includes(q)))
     .sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
   let tot=0;list.forEach(t=>tot+=t.type==='inc'?t.amount:-t.amount);
   let h=`<input class="search" id="q" type="search" placeholder="ابحث بالملاحظة أو الفئة أو المبلغ" value="${esc(F.q)}" autocomplete="off">
   <div class="seg"><button type="button" data-f-type="all" class="${F.type==='all'?'on':''}">الكل</button><button type="button" data-f-type="exp" class="${F.type==='exp'?'on exp':''}">مصاريف</button><button type="button" data-f-type="inc" class="${F.type==='inc'?'on inc':''}">دخل</button></div>`;
   if(usedCats.length>1)h+=`<div class="chips"><button type="button" class="chip ${!F.cat?'on':''}" data-f-cat="">كل الفئات</button>${usedCats.map(id=>{const c=cat(id);return `<button type="button" class="chip ${F.cat===id?'on':''}" data-f-cat="${esc(id)}">${esc(c.icon)} ${esc(c.name)}</button>`}).join('')}</div>`;
+  if(F.cat){const subs=[...new Set(all.filter(t=>t.cat===F.cat&&t.sub).map(t=>t.sub))];if(subs.length)h+=`<div class="chips"><button type="button" class="chip ${!F.sub?'on':''}" data-f-sub="">كل التفاصيل</button>${subs.map(x=>`<button type="button" class="chip ${F.sub===x?'on':''}" data-f-sub="${esc(x)}">${esc(x)}</button>`).join('')}</div>`}
   if(!list.length)h+=`<div class="card empty"><div class="e">🧾</div><p>${all.length?'ماكو نتائج بهذا البحث.':'ماكو عمليات بهذي الفترة.'}</p>${all.length?'':'<button class="btn" type="button" data-act="add">أضف عملية</button>'}</div>`;
   else{
     h+=`<div class="small muted" style="padding:0 2px">${plain(list.length)} عملية · المجموع <b class="num" style="color:var(--ink)">${tot<0?'−':'+'}${money(Math.abs(tot))}</b></div><section class="card" style="padding-top:4px">`;
@@ -531,13 +539,13 @@ function renderStats(){
   const sorted=Object.entries(s.byCat).sort((a,b)=>b[1]-a[1]);
   if(sorted.length){const colors=colorMap(sorted);
     const main=sorted.slice(0,PAL.length-1),rest=sorted.slice(PAL.length-1).reduce((a,[,v])=>a+v,0);
-    const parts=main.map(([id,v])=>({name:cat(id).name,icon:cat(id).icon,v,c:colors[id]}));if(rest)parts.push({name:'باقي الفئات',icon:'',v:rest,c:PAL_OTHER});
+    const parts=main.map(([id,v])=>({id,name:cat(id).name,icon:cat(id).icon,v,c:colors[id]}));if(rest)parts.push({name:'باقي الفئات',icon:'',v:rest,c:PAL_OTHER});
     const C=2*Math.PI*42;let off=0;
     const arcs=parts.map(pt=>{const len=pt.v/s.exp*C;const a=`<circle cx="60" cy="60" r="42" fill="none" stroke="${pt.c}" stroke-width="16" stroke-dasharray="${Math.max(len-1.2,.6)} ${C}" stroke-dashoffset="${-off}" transform="rotate(-90 60 60)"/>`;off+=len;return a}).join('');
     h+=`<section class="card"><div class="chead"><h2>توزيع المصاريف</h2></div><div class="donut-wrap">
       <svg class="chart" viewBox="0 0 120 120" role="img" aria-label="توزيع المصاريف حسب الفئة">${arcs}
       <text x="60" y="57" text-anchor="middle" style="font-size:9px">المجموع</text><text x="60" y="71" text-anchor="middle" style="font-size:12px;fill:var(--ink);font-family:var(--display);font-weight:600">${esc(short(s.exp))}</text></svg>
-      <div class="legend">${parts.map(pt=>`<div><i style="background:${pt.c}"></i><span class="nm">${esc(pt.icon)} ${esc(pt.name)}</span><b>${plain(Math.round(pt.v/s.exp*100))}%</b></div>`).join('')}</div></div></section>`}
+      <div class="legend">${parts.map(pt=>`<div ${pt.id?`class="tap" data-act="catDetail" data-cid="${esc(pt.id)}"`:''}><i style="background:${pt.c}"></i><span class="nm">${esc(pt.icon)} ${esc(pt.name)}</span><b>${plain(Math.round(pt.v/s.exp*100))}%</b></div>`).join('')}</div></div></section>`}
   // daily bars across the period
   let n=R.days;exps.forEach(t=>{n=Math.max(n,diffDays(R.start,t.date)+1)});
   const daily=Array(n).fill(0);exps.forEach(t=>{const i=diffDays(R.start,t.date);if(i>=0)daily[i]+=t.amount});
@@ -563,7 +571,7 @@ function renderStats(){
   const ids=[...new Set([...Object.keys(s.byCat),...Object.keys(p.byCat)])].sort((a,b)=>(s.byCat[b]||0)-(s.byCat[a]||0));
   if(ids.length)h+=`<section class="card"><div class="chead"><h2>مقارنة الفئات ${esc(prevName)}</h2></div><div style="overflow-x:auto"><table class="cmp"><thead><tr><th>الفئة</th><th>هسه</th><th>السابق</th><th>الفرق</th></tr></thead><tbody>`+
     ids.map(id=>{const a=s.byCat[id]||0,b=p.byCat[id]||0,d=a-b,c=cat(id);
-      return `<tr><td>${esc(c.icon)} ${esc(c.name)}</td><td class="n">${esc(short(a))}</td><td class="n muted">${esc(short(b))}</td><td class="n ${d>0?'up':d<0?'down':''}">${d===0?'—':(d>0?'+':'−')+esc(short(Math.abs(d)))}</td></tr>`}).join('')+`</tbody></table></div></section>`;
+      return `<tr class="tap" data-act="catDetail" data-cid="${esc(id)}"><td>${esc(c.icon)} ${esc(c.name)}</td><td class="n">${esc(short(a))}</td><td class="n muted">${esc(short(b))}</td><td class="n ${d>0?'up':d<0?'down':''}">${d===0?'—':(d>0?'+':'−')+esc(short(Math.abs(d)))}</td></tr>`}).join('')+`</tbody></table></div></section>`;
   $('#v-stats').innerHTML=h;
 }
 
@@ -579,7 +587,7 @@ function renderSettings(){const st=S.settings;
     <button class="row" type="button" data-act="budget"><span>ميزانية كل شهر</span><span class="r-val num">${st.budget?money(st.budget):'غير محددة'}${chev}</span></button>
     <button class="row" type="button" data-act="catBudgets"><span>ميزانية لكل فئة</span><span class="r-val">${plain(Object.values(st.catBudgets).filter(v=>v>0).length)} فئة${chev}</span></button>
     <button class="row" type="button" data-act="recurring"><span>المصاريف الثابتة الشهرية</span><span class="r-val">${plain(st.recurring.length)}${chev}</span></button>
-    <button class="row" type="button" data-act="cats"><span>إدارة الفئات</span><span class="r-val">${plain(st.cats.length)}${chev}</span></button>
+    <button class="row" type="button" data-act="cats"><span>الفئات والتفاصيل</span><span class="r-val">${plain(st.cats.length)}${chev}</span></button>
   </div></section>
   <section class="card"><div class="chead"><h2>العرض</h2></div><div class="rows">
     <label class="row" for="s-cur"><span>العملة</span><select id="s-cur" data-set="currency">${curOpts}</select></label>
@@ -641,68 +649,91 @@ async function undoSalary(){const st=S.settings;if(!st.periods.length)return;con
   for(const k in S.months)S.months[k]=S.months[k].filter(t=>{if(t.period!==last)return true;unpayFor(t);return false});
   cur=currentKey();commit();toast('انلغى')}
 
-function debtsSheet(){const st=S.settings;let mode='m',kind='قرض';
+function debtsSheet(){const st=S.settings;let mode='m',kind='قرض',editId=null;
   const draw=el=>{el.querySelector('#dl').innerHTML=st.debts.length?[...st.debts].sort((a,b)=>debtActive(b)-debtActive(a)).map(d=>{const a=debtActive(d),pct=d.monthly?d.paid/d.count:(d.paid?1:0);
     return `<div class="debt ${a?'':'done'}"><div class="dtop"><span class="ico s">💳</span><span class="nm"><b>${esc(d.name)}</b><span class="t2">${esc(d.kind)} · ${d.monthly?`قسط ${money(d.installment)} · دفعت ${plain(d.paid)} من ${plain(d.count)}`:`مرة وحدة · ${money(d.amount)}`}</span></span><span class="pill ${a?'warn':'good'}">${a?'باقي '+esc(short(debtLeft(d))):'مكتمل ✓'}</span></div>
     <div class="track"><i style="width:${(pct*100).toFixed(0)}%;background:var(--good)"></i></div>
-    <div class="dbtns">${a?`<button class="mini" type="button" data-dpay="${d.id}">${d.monthly?'سدّد قسط هسه':'انخصم هسه'}</button>`:''}<button class="mini del" type="button" data-ddel="${d.id}">حذف</button></div></div>`}).join(''):'<p class="muted small" style="margin:0">ماكو قروض أو سلف مسجّلة.</p>'};
+    <div class="dbtns">${a?`<button class="mini" type="button" data-dpay="${d.id}">${d.monthly?'سدّد قسط هسه':'انخصم هسه'}</button>`:''}<button class="mini" type="button" data-dedit="${d.id}">تعديل</button><button class="mini del" type="button" data-ddel="${d.id}">حذف</button></div></div>`}).join(''):'<p class="muted small" style="margin:0">ماكو قروض أو سلف مسجّلة.</p>'};
   openSheet(`${head('القروض والسلف')}<p class="muted small" style="margin:0">أقساط «كل شهر» تنخصم تلقائياً من تضغط «نزل الراتب». وكلها تنحسب ضمن مصاريفك بفئة الديون.</p><div id="dl" class="debts"></div>
-  <div class="card" style="display:flex;flex-direction:column;gap:12px"><h2>إضافة قرض أو سلفة</h2>
+  <div class="card" id="dform" style="display:flex;flex-direction:column;gap:12px"><h2 id="dft">إضافة قرض أو سلفة</h2>
    <div class="seg" id="dk"><button type="button" data-k="قرض" class="on">قرض</button><button type="button" data-k="سلفة">سلفة</button></div>
    <div class="field"><label for="dn">الاسم أو لمنو</label><input id="dn" placeholder="مثلاً: قرض المصرف، سلفة أبو علي" maxlength="40"></div>
    <div class="field"><label>شلون ينخصم؟</label><div class="seg" id="dm"><button type="button" data-m="m" class="on">كل شهر (أقساط)</button><button type="button" data-m="o">شهر واحد</button></div></div>
    <div class="grid2"><div class="field"><label for="da" id="dal">القسط الشهري</label><input id="da" inputmode="decimal" placeholder="0"></div><div class="field" id="dcw"><label for="dc">عدد الأشهر</label><input id="dc" inputmode="numeric" placeholder="مثلاً 10"></div></div>
    <div class="small muted" id="dsum"></div>
-   <label class="check" for="dnow"><input type="checkbox" id="dnow"><span id="dnl">انخصم أول قسط من الراتب الحالي هسه</span></label>
-   <button class="btn ghost" type="button" id="dadd">إضافة</button></div>`,el=>{draw(el);
-    const sum=()=>{const a=parseAmount(el.querySelector('#da').value),c=Math.round(parseAmount(el.querySelector('#dc').value));el.querySelector('#dsum').textContent=mode==='m'&&a&&c?'المجموع الكلي: '+money(a*c):''};
-    el.querySelector('#da').oninput=sum;el.querySelector('#dc').oninput=sum;
-    el.querySelector('#dk').onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;kind=b.dataset.k;el.querySelectorAll('#dk button').forEach(x=>x.classList.toggle('on',x===b))};
-    el.querySelector('#dm').onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;mode=b.dataset.m;el.querySelectorAll('#dm button').forEach(x=>x.classList.toggle('on',x===b));
-      el.querySelector('#dcw').style.display=mode==='m'?'':'none';el.querySelector('#dal').textContent=mode==='m'?'القسط الشهري':'المبلغ';
-      el.querySelector('#dnl').textContent=mode==='m'?'انخصم أول قسط من الراتب الحالي هسه':'انخصمه من الراتب الحالي هسه';el.querySelector('#dnow').checked=mode==='o';sum()};
-    el.querySelector('#dadd').onclick=()=>{const name=el.querySelector('#dn').value.trim(),a=parseAmount(el.querySelector('#da').value),c=Math.round(parseAmount(el.querySelector('#dc').value));
+   <label class="check" for="dnow" id="dnoww"><input type="checkbox" id="dnow"><span id="dnl">انخصم أول قسط من الراتب الحالي هسه</span></label>
+   <button class="btn ghost" type="button" id="dadd">إضافة</button><button class="btn ghost" type="button" id="dcancel" style="display:none">إلغاء التعديل</button></div>`,el=>{draw(el);
+    const q=s=>el.querySelector(s);
+    const sum=()=>{const a=parseAmount(q('#da').value),c=Math.round(parseAmount(q('#dc').value));q('#dsum').textContent=mode==='m'&&a&&c?'المجموع الكلي: '+money(a*c):''};
+    const setKind=k=>{kind=k;el.querySelectorAll('#dk button').forEach(x=>x.classList.toggle('on',x.dataset.k===k))};
+    const setMode=m=>{mode=m;el.querySelectorAll('#dm button').forEach(x=>x.classList.toggle('on',x.dataset.m===m));
+      q('#dcw').style.display=m==='m'?'':'none';q('#dal').textContent=m==='m'?'القسط الشهري':'المبلغ';
+      q('#dnl').textContent=m==='m'?'انخصم أول قسط من الراتب الحالي هسه':'انخصمه من الراتب الحالي هسه';q('#dnow').checked=m==='o';sum()};
+    const reset=()=>{editId=null;['#dn','#da','#dc'].forEach(s=>q(s).value='');setKind('قرض');setMode('m');q('#dft').textContent='إضافة قرض أو سلفة';q('#dadd').textContent='إضافة';q('#dcancel').style.display='none';q('#dnoww').style.display='flex'};
+    q('#da').oninput=sum;q('#dc').oninput=sum;
+    q('#dk').onclick=e=>{const b=e.target.closest('[data-k]');if(b)setKind(b.dataset.k)};
+    q('#dm').onclick=e=>{const b=e.target.closest('[data-m]');if(b)setMode(b.dataset.m)};
+    q('#dcancel').onclick=reset;
+    q('#dadd').onclick=()=>{const name=q('#dn').value.trim(),a=parseAmount(q('#da').value),c=Math.round(parseAmount(q('#dc').value));
       if(!name){toast('اكتب اسم الدين');return}if(!a){toast('اكتب المبلغ');return}if(mode==='m'&&!c){toast('اكتب عدد الأشهر');return}
+      if(editId){const d=st.debts.find(x=>x.id===editId);if(d){d.name=name;d.kind=kind;d.monthly=mode==='m';
+          if(d.monthly){d.installment=a;d.count=Math.max(c,d.paid||0);delete d.amount;if(d.paid>d.count)d.paid=d.count}else{d.amount=a;d.paid=d.paid?1:0;delete d.installment;delete d.count}}
+        reset();draw(el);commit();toast('انحفظ التعديل');return}
       const d={id:uid(),name,kind,monthly:mode==='m',paid:0,created:todayStr()};if(d.monthly){d.installment=a;d.count=c}else d.amount=a;
-      st.debts.push(d);if(el.querySelector('#dnow').checked)payDebt(d,R.isNow?todayStr():R.start);
-      ['#dn','#da','#dc'].forEach(s=>el.querySelector(s).value='');sum();draw(el);commit();toast('انضاف ✓')};
-    el.querySelector('#dl').onclick=e=>{const p=e.target.closest('[data-dpay]'),x=e.target.closest('[data-ddel]');
-      if(p){const d=st.debts.find(q=>q.id===p.dataset.dpay);if(d&&debtActive(d)){payDebt(d,R.isNow?todayStr():R.start);draw(el);commit();toast('انسجّل كمصروف بفئة الديون')}}
-      if(x){if(x.dataset.sure){st.debts=st.debts.filter(q=>q.id!==x.dataset.ddel);draw(el);commit();toast('انحذف. الأقساط المدفوعة تبقى بالمصاريف')}else{x.dataset.sure='1';x.textContent='متأكد؟ اضغط مرة ثانية'}}}})}
+      st.debts.push(d);if(q('#dnow').checked)payDebt(d,R.isNow?todayStr():R.start);
+      reset();draw(el);commit();toast('انضاف ✓')};
+    q('#dl').onclick=e=>{const p=e.target.closest('[data-dpay]'),x=e.target.closest('[data-ddel]'),ed=e.target.closest('[data-dedit]');
+      if(p){const d=st.debts.find(z=>z.id===p.dataset.dpay);if(d&&debtActive(d)){payDebt(d,R.isNow?todayStr():R.start);draw(el);commit();toast('انسجّل كمصروف بفئة الديون')}}
+      if(ed){const d=st.debts.find(z=>z.id===ed.dataset.dedit);if(!d)return;editId=d.id;q('#dn').value=d.name;setKind(d.kind);setMode(d.monthly?'m':'o');
+        q('#da').value=d.monthly?d.installment:d.amount;q('#dc').value=d.monthly?d.count:'';sum();q('#dft').textContent='تعديل: '+d.name;q('#dadd').textContent='حفظ التعديل';
+        q('#dcancel').style.display='';q('#dnoww').style.display='none';q('#dform').scrollIntoView({behavior:'smooth',block:'start'})}
+      if(x){if(x.dataset.sure){st.debts=st.debts.filter(z=>z.id!==x.dataset.ddel);if(editId===x.dataset.ddel)reset();draw(el);commit();toast('انحذف. الأقساط المدفوعة تبقى بالمصاريف')}else{x.dataset.sure='1';x.textContent='متأكد؟ اضغط مرة ثانية'}}}})}
 
 function txSheet(t){
   const editing=!!t,st=S.settings,defDate=R.isNow?todayStr():R.start;
-  const d=t?{...t}:{type:'exp',amount:0,cat:'',note:'',pay:st.pays[0],date:defDate};
+  const d=t?{...t}:{type:'exp',amount:0,cat:'',sub:'',note:'',pay:st.pays[0],date:defDate};
   const lastCat=k=>{const l=allTx().filter(x=>x.type===k&&!x.debt&&!x.period).sort((a,b)=>b.id.localeCompare(a.id))[0];return l?l.cat:''};
   openSheet(`${head(editing?'تعديل العملية':'عملية جديدة')}
   <div class="seg" id="tt"><button type="button" data-t="exp">مصروف</button><button type="button" data-t="inc">دخل</button></div>
   <div class="amount-box"><input id="amt" type="text" inputmode="decimal" placeholder="0" value="${d.amount||''}" autocomplete="off" aria-label="المبلغ"><div class="prev" id="prev"></div>
    <div class="chips" style="justify-content:center;flex-wrap:wrap;margin-top:8px" id="qchips">${CUR().chips.map(v=>`<button type="button" class="chip" data-add="${v}">+${esc(short(v))}</button>`).join('')}</div></div>
   <div class="field"><label>الفئة</label><div class="catgrid" id="cg"></div></div>
+  <div class="field" id="subw"><label id="subl">التفصيل</label><div class="chips wrap" id="sg"></div>
+   <div class="subadd" id="subadd" style="display:none"><input id="subin" placeholder="مثلاً: مكملات" maxlength="30" aria-label="تفصيل جديد"><button class="mini" type="button" id="subok">إضافة</button></div></div>
   <div class="grid2"><div class="field"><label for="dt">التاريخ</label><input id="dt" type="date" value="${d.date}"></div>
    <div class="field"><label for="pay">طريقة الدفع</label><select id="pay">${st.pays.map(p=>`<option ${p===d.pay?'selected':''}>${esc(p)}</option>`).join('')}</select></div></div>
-  <div class="field"><label for="nt">ملاحظة</label><input id="nt" type="text" placeholder="مثلاً: غدا ويا الشباب" value="${esc(d.note)}" maxlength="80"></div>
+  <div class="field"><label for="nt">ملاحظة</label><input id="nt" type="text" placeholder="اختياري" value="${esc(d.note)}" maxlength="80"></div>
   ${editing?'':`<label class="check" for="rec"><input type="checkbox" id="rec"><span>مصروف ثابت يتكرر كل شهر بنفس اليوم</span></label>`}
   <button class="btn" type="button" id="save">${editing?'حفظ التعديل':'إضافة'}</button>
   ${editing?'<button class="btn danger" type="button" id="del">حذف العملية</button>':''}`,el=>{
-    const amt=el.querySelector('#amt'),prev=el.querySelector('#prev');
+    const q=s=>el.querySelector(s),amt=q('#amt'),prev=q('#prev');
     const upd=()=>{const v=parseAmount(amt.value);prev.textContent=v?money(v):'اكتب المبلغ'};
+    const drawSubs=()=>{const c=st.cats.find(x=>x.id===d.cat);const subs=[...((c&&c.subs)||[])];if(d.sub&&!subs.includes(d.sub))subs.push(d.sub);
+      q('#subl').textContent='التفصيل داخل '+(c?c.name:'الفئة')+' (اختياري)';
+      q('#sg').innerHTML=`<button type="button" class="chip ${!d.sub?'on':''}" data-s="">بدون</button>`+subs.map(s=>`<button type="button" class="chip ${d.sub===s?'on':''}" data-s="${esc(s)}">${esc(s)}</button>`).join('')+`<button type="button" class="chip add" data-s-new="1">＋ جديد</button>`;
+      q('#subadd').style.display='none'};
     const drawCats=()=>{el.querySelectorAll('#tt button').forEach(b=>b.className=b.dataset.t===d.type?'on '+d.type:'');
-      const cs=st.cats.filter(c=>c.type===d.type);if(!cs.some(c=>c.id===d.cat)){const lc=lastCat(d.type);d.cat=cs.some(c=>c.id===lc)?lc:(cs[0]||{}).id}
-      el.querySelector('#cg').innerHTML=cs.map(c=>`<button type="button" data-c="${esc(c.id)}" class="${c.id===d.cat?'on':''}"><span>${esc(c.icon)}</span><span>${esc(c.name)}</span></button>`).join('');
-      const r=el.querySelector('.check');if(r)r.style.display=d.type==='exp'?'flex':'none'};
-    el.querySelector('#tt').onclick=e=>{const b=e.target.closest('[data-t]');if(b){d.type=b.dataset.t;drawCats()}};
-    el.querySelector('#cg').onclick=e=>{const b=e.target.closest('[data-c]');if(b){d.cat=b.dataset.c;el.querySelectorAll('#cg button').forEach(x=>x.classList.toggle('on',x===b))}};
-    el.querySelector('#qchips').onclick=e=>{const b=e.target.closest('[data-add]');if(b){amt.value=String(parseAmount(amt.value)+Number(b.dataset.add));upd()}};
+      const cs=st.cats.filter(c=>c.type===d.type);if(!cs.some(c=>c.id===d.cat)){const lc=lastCat(d.type);d.cat=cs.some(c=>c.id===lc)?lc:(cs[0]||{}).id;d.sub=''}
+      q('#cg').innerHTML=cs.map(c=>`<button type="button" data-c="${esc(c.id)}" class="${c.id===d.cat?'on':''}"><span>${esc(c.icon)}</span><span>${esc(c.name)}</span></button>`).join('');
+      const r=q('.check');if(r)r.style.display=d.type==='exp'?'flex':'none';drawSubs()};
+    q('#tt').onclick=e=>{const b=e.target.closest('[data-t]');if(b){d.type=b.dataset.t;drawCats()}};
+    q('#cg').onclick=e=>{const b=e.target.closest('[data-c]');if(b){if(d.cat!==b.dataset.c)d.sub='';d.cat=b.dataset.c;el.querySelectorAll('#cg button').forEach(x=>x.classList.toggle('on',x===b));drawSubs()}};
+    q('#sg').onclick=e=>{const n=e.target.closest('[data-s-new]');if(n){q('#subadd').style.display='flex';q('#subin').focus();return}
+      const b=e.target.closest('[data-s]');if(b){d.sub=b.dataset.s;el.querySelectorAll('#sg [data-s]').forEach(x=>x.classList.toggle('on',x===b))}};
+    const addSub=()=>{const v=q('#subin').value.trim();if(!v){toast('اكتب اسم التفصيل');return}const c=st.cats.find(x=>x.id===d.cat);if(!c)return;
+      c.subs=c.subs||[];if(!c.subs.includes(v))c.subs.push(v);d.sub=v;q('#subin').value='';saveLocal();drawSubs();toast('انضاف «'+v+'» داخل '+c.name)};
+    q('#subok').onclick=addSub;q('#subin').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addSub()}};
+    q('#qchips').onclick=e=>{const b=e.target.closest('[data-add]');if(b){amt.value=String(parseAmount(amt.value)+Number(b.dataset.add));upd()}};
     amt.oninput=upd;upd();drawCats();if(!editing)setTimeout(()=>amt.focus(),320);
-    el.querySelector('#save').onclick=()=>{
+    q('#save').onclick=()=>{
       const v=parseAmount(amt.value);if(!v){toast('اكتب المبلغ أول');amt.focus();return}
-      const date=el.querySelector('#dt').value||defDate;
-      const data=Object.assign({},editing?t:{id:uid()},{type:d.type,amount:v,cat:d.cat,note:el.querySelector('#nt').value.trim(),pay:el.querySelector('#pay').value,date});
+      const date=q('#dt').value||defDate;
+      const data=Object.assign({},editing?t:{id:uid()},{type:d.type,amount:v,cat:d.cat,note:q('#nt').value.trim(),pay:q('#pay').value,date});
+      if(d.sub)data.sub=d.sub;else delete data.sub;
       if(editing){removeTx(t);if(t.rec&&t.date.slice(0,7)!==date.slice(0,7))st.recSkip[t.rec+'|'+t.date.slice(0,7)]=1}
-      else if(el.querySelector('#rec')&&el.querySelector('#rec').checked&&d.type==='exp'){const r={id:uid(),type:'exp',amount:v,cat:d.cat,note:data.note,pay:data.pay,day:+date.slice(8),start:date.slice(0,7)};st.recurring.push(r);data.rec=r.id}
+      else if(q('#rec')&&q('#rec').checked&&d.type==='exp'){const r={id:uid(),type:'exp',amount:v,cat:d.cat,sub:d.sub||'',note:data.note,pay:data.pay,day:+date.slice(8),start:date.slice(0,7)};st.recurring.push(r);data.rec=r.id}
       pushTx(data);cur=keyFor(date);closeSheet();commit();toast(editing?'تم الحفظ':'انضافت ✓')};
-    const del=el.querySelector('#del');
+    const del=q('#del');
     if(del)del.onclick=async()=>{const ok=await ask('تريد تحذف هذي العملية؟'+(t.rec?' (مصروف ثابت، تنحذف من هذا الشهر بس)':'')+(t.debt?' (قسط دين، يرجع القسط باقي عليك)':''),'احذف',true);if(!ok)return;
       removeTx(t);if(t.rec)st.recSkip[t.rec+'|'+t.date.slice(0,7)]=1;unpayFor(t);commit();toast('انحذفت')}});
 }
@@ -711,34 +742,71 @@ function catBudgetsSheet(){const st=S.settings,cs=st.cats.filter(c=>c.type==='ex
   openSheet(`${head('ميزانية لكل فئة')}<p class="muted small" style="margin:0">حدد سقف للفئات اللي تريد تراقبها. يوصلك تنبيه بالرئيسية عند 80%.</p><div>${cs.map(c=>`<div class="budrow"><span class="ico s">${esc(c.icon)}</span><span>${esc(c.name)}</span><input inputmode="decimal" data-cb="${esc(c.id)}" value="${st.catBudgets[c.id]||''}" placeholder="بدون" aria-label="ميزانية ${esc(c.name)}"></div>`).join('')}</div><button class="btn" type="button" id="cbs">حفظ</button>`,
   el=>{el.querySelector('#cbs').onclick=()=>{const nb={};el.querySelectorAll('[data-cb]').forEach(i=>{const v=parseAmount(i.value);if(v)nb[i.dataset.cb]=v});st.catBudgets=nb;closeSheet();commit();toast('تم الحفظ')}})}
 
+/* categories: list → editor with its details (sub-items) */
 function catsSheet(){const st=S.settings;
-  const draw=el=>{el.querySelector('#cl').innerHTML=['exp','inc'].map(tp=>`<div class="small muted" style="margin:10px 0 2px;font-weight:600">${tp==='exp'?'فئات المصاريف':'فئات الدخل'}</div>`+st.cats.filter(c=>c.type===tp).map(c=>`<div class="editrow"><input class="emo" data-ce="${esc(c.id)}" value="${esc(c.icon)}" aria-label="رمز الفئة"><input data-cn="${esc(c.id)}" value="${esc(c.name)}" aria-label="اسم الفئة"><button class="mini del" type="button" data-cd="${esc(c.id)}">حذف</button></div>`).join('')).join('')};
-  openSheet(`${head('إدارة الفئات')}<div id="cl"></div>
-   <div class="card" style="display:flex;flex-direction:column;gap:10px"><h2>فئة جديدة</h2><div class="editrow" style="border:0;padding:0;grid-template-columns:52px 1fr"><input class="emo" id="ne" value="🏷️" aria-label="رمز"><input id="nn" placeholder="اسم الفئة" aria-label="اسم الفئة الجديدة"></div>
-   <div class="seg" id="ntp"><button type="button" class="on exp" data-t="exp">مصروف</button><button type="button" data-t="inc">دخل</button></div><button class="btn ghost" type="button" id="na">إضافة الفئة</button></div>
-   <button class="btn" type="button" id="cs">تم</button>`,el=>{let tp='exp';draw(el);
-   const keepEdits=()=>{el.querySelectorAll('[data-cn]').forEach(i=>{const c=st.cats.find(x=>x.id===i.dataset.cn);if(c&&i.value.trim())c.name=i.value.trim()});el.querySelectorAll('[data-ce]').forEach(i=>{const c=st.cats.find(x=>x.id===i.dataset.ce);if(c&&i.value.trim())c.icon=i.value.trim()})};
-   el.querySelector('#ntp').onclick=e=>{const b=e.target.closest('[data-t]');if(!b)return;tp=b.dataset.t;el.querySelectorAll('#ntp button').forEach(x=>x.className=x.dataset.t===tp?'on '+tp:'')};
-   el.querySelector('#cl').onclick=e=>{const b=e.target.closest('[data-cd]');if(!b)return;const id=b.dataset.cd;keepEdits();
-     if(st.cats.filter(c=>c.type===cat(id).type).length<=1){toast('لازم تبقى فئة وحدة على الأقل');return}
-     st.cats=st.cats.filter(c=>c.id!==id);delete st.catBudgets[id];draw(el);saveLocal();toast('انحذفت الفئة، العمليات القديمة تبقى')};
-   el.querySelector('#na').onclick=()=>{const n=el.querySelector('#nn').value.trim();if(!n){toast('اكتب اسم الفئة');return}keepEdits();
-     st.cats.push({id:'c'+uid(),name:n,icon:el.querySelector('#ne').value.trim()||'🏷️',type:tp});el.querySelector('#nn').value='';draw(el);saveLocal();toast('انضافت الفئة')};
-   el.querySelector('#cs').onclick=()=>{keepEdits();closeSheet();commit()}})}
+  openSheet(`${head('الفئات والتفاصيل')}<p class="muted small" style="margin:0">اضغط على أي فئة حتى تعدّل اسمها ورمزها، أو تضيف وتعدّل وتحذف التفاصيل اللي بداخلها.</p>`+
+  ['exp','inc'].map(tp=>`<div class="card" style="padding:4px 16px"><div class="small muted" style="margin:10px 0 0;font-weight:600">${tp==='exp'?'فئات المصاريف':'فئات الدخل'}</div><div class="rows">`+
+    st.cats.filter(c=>c.type===tp).map(c=>`<button class="row" type="button" data-ced="${esc(c.id)}"><span style="display:flex;gap:10px;align-items:center;min-width:0"><span class="ico s">${esc(c.icon)}</span><span style="min-width:0"><b style="font-weight:600">${esc(c.name)}</b>${(c.subs||[]).length?`<span class="small muted" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.subs.map(esc).join('، ')}</span>`:''}</span></span><span class="r-val">${(c.subs||[]).length?plain(c.subs.length):''}${chev}</span></button>`).join('')+
+    `</div><button class="btn ghost" type="button" data-cnew="${tp}" style="margin:6px 0 12px">＋ فئة ${tp==='exp'?'مصاريف':'دخل'} جديدة</button></div>`).join(''),
+  el=>{el.onclick=e=>{const b=e.target.closest('[data-ced]');if(b){catEditSheet(b.dataset.ced);return}const n=e.target.closest('[data-cnew]');if(n)catEditSheet(null,n.dataset.cnew)}})}
+function catEditSheet(id,newType){const st=S.settings,c=id?st.cats.find(x=>x.id===id):null;const type=c?c.type:newType;
+  const subs=(c&&c.subs?c.subs:[]).map(s=>({orig:s,name:s}));
+  const count=id?allTx().filter(t=>t.cat===id).length:0;
+  const drawSubs=el=>{el.querySelector('#sl').innerHTML=subs.length?subs.map((s,i)=>`<div class="subrow"><input data-si="${i}" value="${esc(s.name)}" maxlength="30" aria-label="اسم التفصيل"><button class="mini del" type="button" data-sd="${i}">حذف</button></div>`).join(''):'<p class="muted small" style="margin:4px 0">ماكو تفاصيل بعد. مثلاً داخل «الجيم»: اشتراك قاعة، مكملات.</p>'};
+  openSheet(`${head(c?'تعديل الفئة':'فئة جديدة')}
+   <div class="editrow" style="border:0;padding:0;grid-template-columns:60px 1fr"><input class="emo" id="ci" value="${esc(c?c.icon:'🏷️')}" aria-label="رمز الفئة"><input id="cn" value="${esc(c?c.name:'')}" placeholder="اسم الفئة، مثلاً: الجيم" maxlength="30" aria-label="اسم الفئة"></div>
+   <p class="muted small" style="margin:-6px 0 0">الرمز: اضغط عليه واختار أي إيموجي من الكيبورد.</p>
+   <div class="card" style="display:flex;flex-direction:column;gap:10px"><h2>التفاصيل داخل الفئة</h2><div id="sl"></div>
+    <div class="subadd" style="display:flex"><input id="sn" placeholder="تفصيل جديد" maxlength="30" aria-label="تفصيل جديد"><button class="mini" type="button" id="sadd">إضافة</button></div></div>
+   <button class="btn" type="button" id="csave">حفظ</button>
+   ${c?`<button class="btn danger" type="button" id="cdel">حذف الفئة${count?` (${plain(count)} عملية تبقى محفوظة)`:''}</button>`:''}
+   <button class="btn ghost" type="button" id="cback">رجوع للفئات</button>`,el=>{const q=s=>el.querySelector(s);drawSubs(el);if(!c)setTimeout(()=>q('#cn').focus(),320);
+    const keep=()=>el.querySelectorAll('[data-si]').forEach(i=>{subs[+i.dataset.si].name=i.value.trim()});
+    const add=()=>{const v=q('#sn').value.trim();if(!v)return;keep();if(subs.some(s=>s.name===v)){toast('موجود');return}subs.push({orig:null,name:v});q('#sn').value='';drawSubs(el)};
+    q('#sadd').onclick=add;q('#sn').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();add()}};
+    q('#sl').onclick=e=>{const b=e.target.closest('[data-sd]');if(!b)return;keep();subs.splice(+b.dataset.sd,1);drawSubs(el)};
+    q('#cback').onclick=()=>catsSheet();
+    q('#csave').onclick=()=>{keep();const name=q('#cn').value.trim();if(!name){toast('اكتب اسم الفئة');return}
+      const pend=q('#sn').value.trim();if(pend&&!subs.some(s=>s.name===pend))subs.push({orig:null,name:pend});
+      const clean=[];subs.forEach(s=>{if(s.name&&!clean.includes(s.name))clean.push(s.name)});
+      let target=c;if(!target){target={id:'c'+uid(),type};st.cats.push(target)}
+      target.name=name;target.icon=q('#ci').value.trim()||'🏷️';target.subs=clean;
+      if(c)subs.forEach(s=>{if(s.orig&&s.name&&s.name!==s.orig)allTx().forEach(t=>{if(t.cat===c.id&&t.sub===s.orig)t.sub=s.name})});
+      commit();toast('انحفظت الفئة');catsSheet()};
+    const del=q('#cdel');if(del)del.onclick=()=>{if(st.cats.filter(x=>x.type===c.type).length<=1){toast('لازم تبقى فئة وحدة على الأقل');return}
+      if(!del.dataset.sure){del.dataset.sure='1';del.textContent='متأكد؟ اضغط مرة ثانية للحذف';return}
+      st.cats=st.cats.filter(x=>x.id!==c.id);delete st.catBudgets[c.id];commit();toast('انحذفت الفئة');catsSheet()}})}
 
-function recurringSheet(){const st=S.settings,cs=st.cats.filter(c=>c.type==='exp');
-  const draw=el=>{el.querySelector('#rl').innerHTML=st.recurring.length?st.recurring.map(r=>{const c=cat(r.cat);return `<div class="tx"><span class="ico">${esc(c.icon)}</span><span class="main"><span class="t1">${esc(r.note||c.name)}</span><span class="t2">يوم ${plain(r.day)} من كل شهر · ${money(r.amount)}</span></span><button class="mini del" type="button" data-rd="${r.id}">إيقاف</button></div>`}).join(''):'<p class="muted small" style="margin:8px 0">ماكو مصاريف ثابتة بعد. مثل الإيجار، المولدة، الإنترنت.</p>'};
+/* tap a category anywhere → breakdown by its details for the current period */
+function catDetail(id){const c=cat(id),list=txsOf(R).filter(t=>t.cat===id).sort((a,b)=>b.date.localeCompare(a.date));
+  const tot=list.reduce((a,t)=>a+t.amount,0),by={};list.forEach(t=>{const k=t.sub||'';by[k]=(by[k]||0)+t.amount});
+  const rows=Object.entries(by).sort((a,b)=>b[1]-a[1]);
+  openSheet(`${head(esc(c.icon)+' '+esc(c.name))}<div class="small muted">${esc(rTitle(R))} · ${plain(list.length)} عملية</div>
+  <div class="amount-box"><div class="num" style="font-size:32px;font-weight:700">${money(tot)}</div></div>
+  ${rows.length>1||(rows[0]&&rows[0][0])?`<div class="card"><div class="chead"><h2>حسب التفصيل</h2></div><div class="cbars">${rows.map(([k,v],i)=>`<div><div class="cbar-top"><span class="nm">${k?esc(k):'<span class="muted">بدون تفصيل</span>'}</span><span class="muted small num">${plain(Math.round(v/tot*100))}%</span><b>${money(v)}</b></div><div class="track"><i style="width:${(v/tot*100).toFixed(1)}%;background:${PAL[i%PAL.length]}"></i></div></div>`).join('')}</div></div>`:''}
+  ${list.length?`<div class="card" style="padding-top:4px"><div class="txs">${list.map(txRow).join('')}</div></div>`:'<p class="muted">ماكو عمليات بهذي الفئة بالفترة الحالية.</p>'}
+  <button class="btn ghost" type="button" data-act="editCat" data-cid="${esc(id)}">تعديل الفئة وتفاصيلها</button>`)}
+
+function recurringSheet(){const st=S.settings,cs=st.cats.filter(c=>c.type==='exp');let editId=null;
+  const draw=el=>{el.querySelector('#rl').innerHTML=st.recurring.length?st.recurring.map(r=>{const c=cat(r.cat);return `<div class="tx"><span class="ico">${esc(c.icon)}</span><span class="main"><span class="t1">${esc(r.note||c.name)}</span><span class="t2">يوم ${plain(r.day)} من كل شهر · ${money(r.amount)}</span></span><span class="dbtns" style="margin:0"><button class="mini" type="button" data-re="${r.id}">تعديل</button><button class="mini del" type="button" data-rd="${r.id}">إيقاف</button></span></div>`}).join(''):'<p class="muted small" style="margin:8px 0">ماكو مصاريف ثابتة بعد. مثل الإيجار، المولدة، اشتراك الجيم.</p>'};
   openSheet(`${head('المصاريف الثابتة')}<p class="muted small" style="margin:0">تنضاف تلقائياً كل شهر بيومها، وتشوف القادمة منها بالرئيسية.</p><div class="card" style="padding:4px 16px"><div class="txs" id="rl"></div></div>
-  <div class="card" style="display:flex;flex-direction:column;gap:10px"><h2>إضافة مصروف ثابت</h2>
+  <div class="card" id="rform" style="display:flex;flex-direction:column;gap:10px"><h2 id="rft">إضافة مصروف ثابت</h2>
    <div class="field"><label for="ra">المبلغ</label><input id="ra" inputmode="decimal" placeholder="مثلاً 50000"></div>
    <div class="grid2"><div class="field"><label for="rc">الفئة</label><select id="rc">${cs.map(c=>`<option value="${esc(c.id)}">${esc(c.icon)} ${esc(c.name)}</option>`).join('')}</select></div>
    <div class="field"><label for="rd">يوم الدفع</label><select id="rd">${Array.from({length:28},(_,i)=>`<option value="${i+1}">${plain(i+1)}</option>`).join('')}</select></div></div>
-   <div class="field"><label for="rn">الاسم</label><input id="rn" placeholder="مثلاً: اشتراك المولدة"></div>
-   <button class="btn ghost" type="button" id="radd">إضافة</button></div>`,el=>{draw(el);
-   el.querySelector('#rl').onclick=e=>{const b=e.target.closest('[data-rd]');if(!b)return;st.recurring=st.recurring.filter(r=>r.id!==b.dataset.rd);draw(el);commit();toast('توقف التكرار، المسجّل سابقاً يبقى')};
-   el.querySelector('#radd').onclick=()=>{const a=parseAmount(el.querySelector('#ra').value);if(!a){toast('اكتب المبلغ');return}
-     st.recurring.push({id:uid(),type:'exp',amount:a,cat:el.querySelector('#rc').value,day:+el.querySelector('#rd').value,note:el.querySelector('#rn').value.trim(),pay:st.pays[0],start:thisMonth()});
-     el.querySelector('#ra').value='';el.querySelector('#rn').value='';applyRecurring(thisMonth());draw(el);commit();toast('انضاف ✓')}})}
+   <div class="field"><label for="rn">الاسم</label><input id="rn" placeholder="مثلاً: اشتراك الجيم"></div>
+   <button class="btn ghost" type="button" id="radd">إضافة</button><button class="btn ghost" type="button" id="rcancel" style="display:none">إلغاء التعديل</button></div>`,el=>{draw(el);const q=s=>el.querySelector(s);
+   const reset=()=>{editId=null;q('#ra').value='';q('#rn').value='';q('#rft').textContent='إضافة مصروف ثابت';q('#radd').textContent='إضافة';q('#rcancel').style.display='none'};
+   q('#rcancel').onclick=reset;
+   q('#rl').onclick=e=>{const b=e.target.closest('[data-rd]'),ed=e.target.closest('[data-re]');
+     if(b){st.recurring=st.recurring.filter(r=>r.id!==b.dataset.rd);if(editId===b.dataset.rd)reset();draw(el);commit();toast('توقف التكرار، المسجّل سابقاً يبقى')}
+     if(ed){const r=st.recurring.find(x=>x.id===ed.dataset.re);if(!r)return;editId=r.id;q('#ra').value=r.amount;q('#rc').value=r.cat;q('#rd').value=String(r.day);q('#rn').value=r.note||'';
+       q('#rft').textContent='تعديل المصروف الثابت';q('#radd').textContent='حفظ التعديل';q('#rcancel').style.display='';q('#rform').scrollIntoView({behavior:'smooth',block:'start'})}};
+   q('#radd').onclick=()=>{const a=parseAmount(q('#ra').value);if(!a){toast('اكتب المبلغ');return}
+     const vals={amount:a,cat:q('#rc').value,day:+q('#rd').value,note:q('#rn').value.trim()};
+     if(editId){const r=st.recurring.find(x=>x.id===editId);if(r)Object.assign(r,vals);reset();draw(el);commit();toast('انحفظ. ينطبق من الشهر الجاي');return}
+     st.recurring.push(Object.assign({id:uid(),type:'exp',pay:st.pays[0],start:thisMonth()},vals));
+     reset();applyRecurring(thisMonth());draw(el);commit();toast('انضاف ✓')}})}
 
 function installSheet(){openSheet(`${head('تثبيته على الآيفون')}<ol class="steps">
   <li>افتح رابط البرنامج من <b>Safari</b>.</li><li>اضغط زر المشاركة (المربع اللي بيه سهم لفوك).</li>
@@ -786,7 +854,8 @@ function clearDemo(){for(const k in S.months)S.months[k]=S.months[k].filter(t=>!
 document.addEventListener('click',e=>{
   const tb=e.target.closest('[data-tab]');if(tb){tab=tb.dataset.tab;render();window.scrollTo(0,0);return}
   const ft=e.target.closest('[data-f-type]');if(ft){F.type=ft.dataset.fType;renderList();return}
-  const fc=e.target.closest('[data-f-cat]');if(fc){F.cat=fc.dataset.fCat;renderList();return}
+  const fc=e.target.closest('[data-f-cat]');if(fc){F.cat=fc.dataset.fCat;F.sub='';renderList();return}
+  const fs=e.target.closest('[data-f-sub]');if(fs){F.sub=fs.dataset.fSub;renderList();return}
   const a=e.target.closest('[data-act]');if(!a)return;
   switch(a.dataset.act){
     case 'add':txSheet(null);break;
@@ -801,6 +870,8 @@ document.addEventListener('click',e=>{
     case 'budget':amountSheet('الميزانية','شگد تريد تصرف كحد أقصى من راتب لراتب؟ اكتب 0 حتى تلغيها.',S.settings.budget,v=>{S.settings.budget=v},v=>' · حوالي '+money(v/30)+' باليوم');break;
     case 'catBudgets':catBudgetsSheet();break;
     case 'cats':catsSheet();break;
+    case 'catDetail':catDetail(a.dataset.cid);break;
+    case 'editCat':catEditSheet(a.dataset.cid);break;
     case 'recurring':recurringSheet();break;
     case 'install':installSheet();break;
     case 'hideInstall':S.settings.installDismissed=true;closeSheet();commit();break;
